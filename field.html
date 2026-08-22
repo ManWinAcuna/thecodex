@@ -1,0 +1,128 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>The Codex</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23000'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='38' font-weight='bold' fill='%23f5c542' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="codex.css?v=1">
+</head>
+<body>
+<div class="page">
+
+  <div class="codex-header">
+    <h1 class="codex-title"><a href="index.html">The Codex</a></h1>
+    <span id="cloudSlot"></span>
+  </div>
+  <div class="codex-toolbar">
+    <a class="back-link" href="index.html">&larr; All fields</a>
+    <span id="fieldTitleChip" class="count-chip"></span>
+    <button id="renameFieldBtn" class="btn-link">Rename</button>
+    <button id="deleteFieldBtn" class="btn-link btn-danger">Delete field</button>
+  </div>
+
+  <div class="box">
+    <div class="box-label">Add Entry</div>
+    <div class="inline-form">
+      <input type="text" id="lookupName" placeholder="Name, e.g. Muhammad Ali" autocomplete="off">
+      <button id="lookupBtn" class="btn">Look up</button>
+    </div>
+    <div id="candidateList" class="candidate-list"></div>
+    <div class="inline-form" style="margin-top: 10px;">
+      <input type="text" id="manualName" placeholder="Manual: name">
+      <input type="date" id="manualDate">
+      <button id="manualAddBtn" class="btn-link">Add manually</button>
+    </div>
+    <div id="addStatus" class="status-line"></div>
+  </div>
+
+  <div class="box" id="seedBox" hidden>
+    <div class="box-label">Preload</div>
+    <div class="box-sub" id="seedSub"></div>
+    <button id="seedBtn" class="btn">Preload list</button>
+    <div id="seedStatus" class="status-line"></div>
+    <div class="progress-track" id="seedTrack" hidden><div class="progress-fill" id="seedFill"></div></div>
+    <ul id="seedFails" class="fail-list"></ul>
+  </div>
+
+  <div class="box">
+    <button class="collapsible-toggle" id="importToggle" type="button">
+      <span class="box-label">Bulk Import</span>
+      <span class="collapse-chevron" id="importChevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body" id="importBody" hidden>
+      <div class="box-sub">One name per line. Dates resolve from Wikidata automatically. To supply your own date write: Name | YYYY-MM-DD</div>
+      <textarea id="importText" placeholder="Muhammad Ali&#10;Mike Tyson | 1966-06-30&#10;Floyd Mayweather Jr."></textarea>
+      <div class="inline-form" style="margin-top: 8px;">
+        <button id="importRunBtn" class="btn">Import</button>
+      </div>
+      <div id="importStatus" class="status-line"></div>
+      <div class="progress-track" id="importTrack" hidden><div class="progress-fill" id="importFill"></div></div>
+      <ul id="importFails" class="fail-list"></ul>
+    </div>
+  </div>
+
+  <div class="box">
+    <button class="collapsible-toggle" id="distToggle" type="button">
+      <span class="box-label">Distribution</span>
+      <span class="collapse-chevron" id="distChevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body" id="distBody" hidden>
+      <div class="inline-form">
+        <select id="distDim"></select>
+        <span class="toggle-group">
+          <button class="btn-link mode-btn active" data-mode="true" data-group="dist">True baseline</button>
+          <button class="btn-link mode-btn" data-mode="db" data-group="dist">Rest of DB</button>
+          <button class="btn-link mode-btn" data-mode="raw" data-group="dist">Raw</button>
+        </span>
+      </div>
+      <div id="distResults"></div>
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="inline-form">
+      <input type="text" id="entrySearch" placeholder="Filter this field by name or date" autocomplete="off">
+      <span id="entryCount" class="count-chip"></span>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="codex-table" id="entriesTable">
+      <thead><tr id="entriesHead"></tr></thead>
+      <tbody id="entriesBody"></tbody>
+    </table>
+  </div>
+  <div class="inline-form" style="margin-top: 10px;">
+    <button id="showAllBtn" class="btn-link" hidden>Show all</button>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="detailOverlay">
+  <div class="modal-box">
+    <button class="modal-close" id="detailClose" title="Close">&times;</button>
+    <div id="detailBody"></div>
+  </div>
+</div>
+
+<script src="astronomy.browser.min.js"></script>
+<script src="astro-engine.js"></script>
+<script src="numerology.js"></script>
+<script src="compat-data.js"></script>
+<script src="overrides-engine.js"></script>
+<script src="compat-engine.js"></script>
+<script src="imprint-alignment.js"></script>
+<script src="firebase-config.js"></script>
+<script src="codex-core.js?v=1"></script>
+<script src="codex-compute.js?v=1"></script>
+<script src="codex-wiki.js?v=2"></script>
+<script src="codex-baseline.js?v=1"></script>
+<script src="codex-analytics.js?v=1"></script>
+<script src="codex-detail.js?v=1"></script>
+<script src="codex-seeds.js?v=1"></script>
+<script src="codex-cloud.js?v=1"></script>
+<script src="codex-field.js?v=2"></script>
+</body>
+</html>

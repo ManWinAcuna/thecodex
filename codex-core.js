@@ -43,12 +43,13 @@ function codexLoadDB() {
       const db = JSON.parse(raw);
       if (db && Array.isArray(db.fields)) {
         if (!Array.isArray(db.seenSeeds)) db.seenSeeds = [];
+        if (!Array.isArray(db.hourFields)) db.hourFields = [];
         if (!db.updatedAt) db.updatedAt = 0;
         return db;
       }
     }
   } catch (e) { /* corrupted -> fresh */ }
-  return { fields: [], seenSeeds: [], updatedAt: 0 };
+  return { fields: [], hourFields: [], seenSeeds: [], updatedAt: 0 };
 }
 
 function codexSaveDB(db) {
@@ -146,6 +147,7 @@ function codexImportBackup(file, onDone) {
       const entryCount = data.fields.reduce((n, f) => n + (f.entries ? f.entries.length : 0), 0);
       if (!confirm(`Replace the current database with this backup? (${data.fields.length} fields, ${entryCount} entries)`)) return;
       if (!Array.isArray(data.seenSeeds)) data.seenSeeds = [];
+      if (!Array.isArray(data.hourFields)) data.hourFields = [];
       codexSaveDB(data);
       onDone(data);
     } catch (e) {

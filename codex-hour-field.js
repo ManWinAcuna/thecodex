@@ -63,6 +63,7 @@ document.getElementById('hAddBtn').addEventListener('click', () => {
   ['hName', 'hBirthDate', 'hBirthTime', 'hDeathDate', 'hDeathTime'].forEach((id) => { document.getElementById(id).value = ''; });
   renderEntries();
   renderStat();
+  renderHourDist();
 });
 
 /* -------------------------------------------------------- mass upload --- */
@@ -84,21 +85,35 @@ document.getElementById('importRunBtn').addEventListener('click', () => {
   if (added) document.getElementById('importText').value = '';
   renderEntries();
   renderStat();
+  renderHourDist();
 });
 
 /* ---------------------------------------------------------------- stat --- */
 
+let hourDistMode = 'exp';
+
 function renderStat() {
   const out = document.getElementById('statResults');
   const items = field.entries.map((e) => ({ entry: e, field }));
-  out.innerHTML = codexOwnHourStatHtml(items, false);
-  out.querySelectorAll('.entry-chip').forEach((chip) => {
-    chip.addEventListener('click', () => {
-      const entry = field.entries.find((e) => e.id === chip.dataset.entry);
-      if (entry) codexOpenHourDetail(entry, field);
-    });
-  });
+  out.innerHTML = codexDeathHourStudyHtml(items, false);
+  codexWireHourBars(out, items);
 }
+
+function renderHourDist() {
+  const out = document.getElementById('hourDistResults');
+  const items = field.entries.map((e) => ({ entry: e, field }));
+  out.innerHTML = codexHourDistributionHtml(items, document.getElementById('hourDistDim').value, hourDistMode, false);
+  codexWireHourBars(out, items);
+}
+
+document.getElementById('hourDistDim').addEventListener('change', renderHourDist);
+document.querySelectorAll('.mode-btn[data-group="hdist"]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    hourDistMode = btn.dataset.mode;
+    document.querySelectorAll('.mode-btn[data-group="hdist"]').forEach((b) => b.classList.toggle('active', b === btn));
+    renderHourDist();
+  });
+});
 
 /* --------------------------------------------------------------- table --- */
 
@@ -200,9 +215,12 @@ function renderTitle() {
 
 codexWireCollapsible('importToggle', 'importBody', 'importChevron');
 codexWireCollapsible('statToggle', 'statBody', 'statChevron');
+codexWireCollapsible('distToggle', 'distBody', 'distChevron');
+document.getElementById('hourDistDim').innerHTML = codexHourDimensionOptionsHtml('deathHour');
 renderTitle();
 renderEntries();
 renderStat();
+renderHourDist();
 
 codexCloudInit(() => {
   db = codexLoadDB();
@@ -211,4 +229,5 @@ codexCloudInit(() => {
   renderTitle();
   renderEntries();
   renderStat();
+  renderHourDist();
 });

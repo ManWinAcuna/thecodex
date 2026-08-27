@@ -145,6 +145,10 @@ function codexHourRowStudyFlags(table, row) {
   };
 }
 
+function codexHourChipHtml(it, showField) {
+  return `<span class="entry-chip" data-entry="${it.entry.id}">${codexEscape(it.entry.name)}${showField ? `<span class="chip-field">${codexEscape(it.field.name)}</span>` : ''}</span>`;
+}
+
 function codexDeathHourStudyHtml(items, showField) {
   const dead = items.filter((it) => it.entry.deathDate && it.entry.deathTime);
   if (!dead.length) return '<div class="status-line">No deaths recorded in this scope yet.</div>';
@@ -167,26 +171,161 @@ function codexDeathHourStudyHtml(items, showField) {
     CODEX_DEATH_STUDY_METRICS.forEach((m) => { if (deathFlags[m.id]) acc[m.id].hits.push(it); });
   });
 
-  const chip = (it) => `<span class="entry-chip" data-entry="${it.entry.id}">${codexEscape(it.entry.name)}${showField ? `<span class="chip-field">${codexEscape(it.field.name)}</span>` : ''}</span>`;
-
+  const maxHits = Math.max(1, ...CODEX_DEATH_STUDY_METRICS.map((m) => acc[m.id].hits.length));
   const rows = CODEX_DEATH_STUDY_METRICS.map((m) => {
     const a = acc[m.id];
+    const pct = a.hits.length / dead.length;
     const expectedPct = a.expected > 0 ? a.expected / dead.length : null;
-    const badge = (a.hits.length || expectedPct != null) ? codexRatioBadgeHtml(a.hits.length / dead.length, expectedPct) : '';
-    return `<div class="study-row">
-      <span class="study-label">${m.label}</span>
-      <span class="study-nums">${a.hits.length} &middot; exp ${a.expected.toFixed(2)}</span>
-      ${badge}
-      ${a.hits.length ? `<div class="bar-entries" style="display:flex;">${a.hits.map(chip).join('')}</div>` : ''}
+    const badge = (a.hits.length || expectedPct != null) ? codexRatioBadgeHtml(pct, expectedPct) : '';
+    return `<div class="bar-row">
+      <div class="bar-key">${a.hits.length}</div>
+      <div>
+        <div class="bar-label">${m.label}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2, Math.round((a.hits.length / maxHits) * 100))}%"></div></div>
+      </div>
+      <div class="bar-meta"><span>${(pct * 100).toFixed(1)}%</span><span>exp ${a.expected.toFixed(2)}</span>${badge}</div>
+      <div class="bar-entries" hidden>${a.hits.map((it) => codexHourChipHtml(it, showField)).join('')}</div>
     </div>`;
   }).join('');
 
-  return `<div class="status-line">${dead.length} deaths in scope</div>${rows}`;
+  return `<div class="status-line">${dead.length} deaths in scope</div><div class="bar-rows">${rows}</div>`;
 }
 
-/* Kept as an alias so nothing external breaks. */
-function codexOwnHourStatHtml(items, showField) {
-  return codexDeathHourStudyHtml(items, showField);
+/* ---------------------------------------------- hour distribution bars --- */
+/* "Which hour does the event actually land in": leaderboard-style bars over
+   a chosen hour dimension. Expected baselines stay honest per dimension:
+   clock hours are uniform 1/24, shichen 1/12, clock roots come from running
+   the engine over all 1440 clock minutes, personal hour values from
+   scanning each contributing person's own 24-row table. */
+
+function codexHourLabelForHour(h) {
+  return `${hour24To12(h)} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+let codexClockRootBaseline = null;
+function codexClockRootBaselinePct(key) {
+  if (!codexClockRootBaseline) {
+    codexClockRootBaseline = {};
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m++) {
+        const k = String(getTimeOfBirthRoot(h, m));
+        codexClockRootBaseline[k] = (codexClockRootBaseline[k] || 0) + 1;
+      }
+    }
+  }
+  return (codexClockRootBaseline[key] || 0) / 1440;
+}
+
+/* Per-person expected share of a personal-hour VALUE across the scope:
+   each contributor's own table is scanned for rows carrying that value. */
+function codexPHValueExpectedPct(key, contributors, military) {
+  if (!contributors.length) return null;
+  let sum = 0;
+  contributors.forEach((it) => {
+    const [bh, bm] = it.entry.birthTime.split(':').map(Number);
+    const table = getPersonalHoursTable(bh, bm);
+    table.rows.forEach((row) => {
+      const v = military ? row.militaryReduced : row.digitalReduced;
+      if (String(v) === key) sum += 1 / 24;
+    });
+  });
+  return sum / contributors.length;
+}
+
+const CODEX_HOUR_DIMENSIONS = [
+  {
+    id: 'deathHour', label: 'Death hour',
+    get: (e) => (e.deathTime ? codexHourLabelForHour(Number(e.deathTime.split(':')[0])) : null),
+    expectedPct: () => 1 / 24,
+  },
+  {
+    id: 'deathShichen', label: 'Death hour animal',
+    get: (e, c) => (c.death ? c.death.animal : null),
+    expectedPct: () => 1 / 12,
+  },
+  {
+    id: 'deathPH', label: 'Death PH value',
+    get: (e, c) => (c.death ? c.death.personalHour : null),
+    expectedPct: (key, contributors) => codexPHValueExpectedPct(key, contributors, false),
+  },
+  {
+    id: 'deathPHMil', label: 'Death PH (military)',
+    get: (e, c) => (c.death && c.death.personalHourMil != null ? c.death.personalHourMil : null),
+    expectedPct: (key, contributors) => codexPHValueExpectedPct(key, contributors, true),
+  },
+  {
+    id: 'deathRoot', label: 'Death clock root',
+    get: (e, c) => (c.death ? c.death.clockRoot : null),
+    expectedPct: (key) => codexClockRootBaselinePct(key),
+  },
+  {
+    id: 'birthHour', label: 'Birth hour',
+    get: (e) => codexHourLabelForHour(Number(e.birthTime.split(':')[0])),
+    expectedPct: () => 1 / 24,
+  },
+  {
+    id: 'birthShichen', label: 'Birth hour animal',
+    get: (e, c) => c.birthAnimal,
+    expectedPct: () => 1 / 12,
+  },
+  {
+    id: 'birthRoot', label: 'Birth root',
+    get: (e, c) => c.root,
+    expectedPct: (key) => codexClockRootBaselinePct(key),
+  },
+];
+
+function codexHourDimensionOptionsHtml(selectedId) {
+  return CODEX_HOUR_DIMENSIONS.map((d) =>
+    `<option value="${d.id}"${d.id === selectedId ? ' selected' : ''}>${d.label}</option>`).join('');
+}
+
+function codexHourDistributionHtml(items, dimId, mode, showField) {
+  const dim = CODEX_HOUR_DIMENSIONS.find((d) => d.id === dimId) || CODEX_HOUR_DIMENSIONS[0];
+  const counts = new Map();
+  const contributors = [];
+  items.forEach((it) => {
+    const key = dim.get(it.entry, codexComputeHourCodes(it.entry));
+    if (key == null) return;
+    contributors.push(it);
+    if (!counts.has(key)) counts.set(key, []);
+    counts.get(key).push(it);
+  });
+  if (!counts.size) return '<div class="status-line">Nothing in this scope carries that dimension yet.</div>';
+  const total = contributors.length;
+  const rows = Array.from(counts.entries()).sort((a, b) => b[1].length - a[1].length);
+  const maxCount = rows[0][1].length;
+
+  const html = rows.map(([key, hits]) => {
+    const pct = hits.length / total;
+    const expectedPct = mode === 'raw' ? null : dim.expectedPct(key, contributors);
+    return `<div class="bar-row">
+      <div class="bar-key">${codexEscape(key)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2, Math.round((hits.length / maxCount) * 100))}%"></div></div>
+      <div class="bar-meta"><span>${hits.length}</span><span>${(pct * 100).toFixed(1)}%</span>${expectedPct != null ? codexRatioBadgeHtml(pct, expectedPct) : ''}</div>
+      <div class="bar-entries" hidden>${hits.map((it) => codexHourChipHtml(it, showField)).join('')}</div>
+    </div>`;
+  }).join('');
+
+  return `<div class="status-line">${total} in scope</div><div class="bar-rows">${html}</div>`;
+}
+
+/* Same expand-and-chip wiring as the main wing's leaderboard, but chips
+   open the HOUR detail popup. */
+function codexWireHourBars(container, items) {
+  container.querySelectorAll('.bar-row').forEach((row) => {
+    row.addEventListener('click', (ev) => {
+      if (ev.target.closest('.entry-chip')) return;
+      const list = row.querySelector('.bar-entries');
+      if (list) { list.hidden = !list.hidden; row.classList.toggle('active', !list.hidden); }
+    });
+  });
+  container.querySelectorAll('.entry-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const found = items.find((it) => it.entry.id === chip.dataset.entry);
+      if (found) codexOpenHourDetail(found.entry, found.field);
+    });
+  });
 }
 
 /* -------------------------------------------------------- detail popup --- */

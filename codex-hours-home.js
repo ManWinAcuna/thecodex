@@ -35,24 +35,41 @@ document.getElementById('addHourFieldBtn').addEventListener('click', () => {
   renderStat();
 });
 
+let hourDistMode = 'exp';
+
 function renderStat() {
   const out = document.getElementById('statResults');
   const items = codexAllHourEntries(db);
-  out.innerHTML = codexOwnHourStatHtml(items, true);
-  out.querySelectorAll('.entry-chip').forEach((chip) => {
-    chip.addEventListener('click', () => {
-      const found = items.find((it) => it.entry.id === chip.dataset.entry);
-      if (found) codexOpenHourDetail(found.entry, found.field);
-    });
-  });
+  out.innerHTML = codexDeathHourStudyHtml(items, true);
+  codexWireHourBars(out, items);
 }
 
+function renderHourDist() {
+  const out = document.getElementById('hourDistResults');
+  const items = codexAllHourEntries(db);
+  out.innerHTML = codexHourDistributionHtml(items, document.getElementById('hourDistDim').value, hourDistMode, true);
+  codexWireHourBars(out, items);
+}
+
+document.getElementById('hourDistDim').addEventListener('change', renderHourDist);
+document.querySelectorAll('.mode-btn[data-group="hdist"]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    hourDistMode = btn.dataset.mode;
+    document.querySelectorAll('.mode-btn[data-group="hdist"]').forEach((b) => b.classList.toggle('active', b === btn));
+    renderHourDist();
+  });
+});
+
 codexWireCollapsible('statToggle', 'statBody', 'statChevron');
+codexWireCollapsible('distToggle', 'distBody', 'distChevron');
+document.getElementById('hourDistDim').innerHTML = codexHourDimensionOptionsHtml('deathHour');
 renderHourFields();
 renderStat();
+renderHourDist();
 
 codexCloudInit(() => {
   db = codexLoadDB();
   renderHourFields();
   renderStat();
+  renderHourDist();
 });

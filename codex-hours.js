@@ -340,7 +340,7 @@ function codexOpenHourDetail(entry, field) {
   const birthTiles = [
     codexFactTileHtml('Root', codes.root),
     codes.rootMil != null ? codexFactTileHtml('Military Root', codes.rootMil) : '',
-    codexFactTileHtml('Birth Animal', codes.birthAnimal, true),
+    codexFactTileHtml('Birth Hour Animal', codes.birthAnimal, true),
   ].join('');
 
   const deathTiles = d ? [
@@ -348,7 +348,7 @@ function codexOpenHourDetail(entry, field) {
     d.personalHourMil != null ? codexFactTileHtml('Death PH (Mil)', d.personalHourMil) : '',
     codexFactTileHtml('Death Root', d.clockRoot),
     d.clockRootMil != null ? codexFactTileHtml('D.Root (Mil)', d.clockRootMil) : '',
-    codexFactTileHtml('Death Animal', d.animal, true),
+    codexFactTileHtml('Death Hour Animal', d.animal, true),
     codexFactTileHtml('Own Hour', d.ownExactHour ? 'Exact' : (d.ownShichen ? 'Shichen' : 'No'), true),
   ].join('') : '';
 

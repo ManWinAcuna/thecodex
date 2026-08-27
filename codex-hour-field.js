@@ -123,13 +123,13 @@ const HOUR_COLS = [
   { id: 'btime', label: 'B.Time', val: (e) => e.birthTime, cell: (e) => codexEscape(e.birthTime), cls: 'dim-cell' },
   { id: 'root', label: 'Root', val: (e, c) => Number(c.root), cell: (e, c) => c.root, cls: 'num' },
   { id: 'mil', label: 'Mil', val: (e, c) => (c.rootMil == null ? -1 : Number(c.rootMil)), cell: (e, c) => (c.rootMil == null ? '' : c.rootMil), cls: 'num' },
-  { id: 'banimal', label: 'B.Animal', val: (e, c) => codexAnimalSortKey(c.birthAnimal), cell: (e, c) => codexEscape(c.birthAnimal), cls: 'dim-cell' },
+  { id: 'banimal', label: 'B.Hr Animal', val: (e, c) => codexAnimalSortKey(c.birthAnimal), cell: (e, c) => codexEscape(c.birthAnimal), cls: 'dim-cell' },
   { id: 'died', label: 'Died', val: (e) => e.deathDate || '', cell: (e) => codexEscape(e.deathDate || ''), cls: 'dim-cell' },
   { id: 'dtime', label: 'D.Time', val: (e) => e.deathTime || '', cell: (e) => codexEscape(e.deathTime || ''), cls: 'dim-cell' },
   { id: 'dph', label: 'Death PH', val: (e, c) => (c.death ? Number(c.death.personalHour) : -1), cell: (e, c) => (c.death ? c.death.personalHour : ''), cls: 'num' },
   { id: 'dphm', label: 'PH Mil', val: (e, c) => (c.death && c.death.personalHourMil != null ? Number(c.death.personalHourMil) : -1), cell: (e, c) => (c.death && c.death.personalHourMil != null ? c.death.personalHourMil : ''), cls: 'num' },
   { id: 'droot', label: 'D.Root', val: (e, c) => (c.death ? Number(c.death.clockRoot) : -1), cell: (e, c) => (c.death ? c.death.clockRoot : ''), cls: 'num' },
-  { id: 'danimal', label: 'D.Animal', val: (e, c) => (c.death ? codexAnimalSortKey(c.death.animal) : 99), cell: (e, c) => (c.death ? codexEscape(c.death.animal) : ''), cls: 'dim-cell' },
+  { id: 'danimal', label: 'D.Hr Animal', val: (e, c) => (c.death ? codexAnimalSortKey(c.death.animal) : 99), cell: (e, c) => (c.death ? codexEscape(c.death.animal) : ''), cls: 'dim-cell' },
   { id: 'own', label: 'Own', val: (e, c) => (c.death ? (c.death.ownExactHour ? 2 : (c.death.ownShichen ? 1 : 0)) : -1), cell: (e, c) => (c.death ? (c.death.ownExactHour ? '<span class="own-badge">EXACT</span>' : (c.death.ownShichen ? '<span class="own-badge">SHICHEN</span>' : '')) : ''), cls: '' },
 ];
 

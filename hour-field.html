@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#000000">
 <title>Hour Studies - The Codex</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23000'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='38' font-weight='bold' fill='%23f5c542' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="codex.css?v=4">
+<link rel="stylesheet" href="codex.css?v=5">
 </head>
 <body>
 <div class="page">
@@ -22,78 +22,87 @@
     <button id="deleteFieldBtn" class="btn-link btn-danger">Delete category</button>
   </div>
 
-  <div class="box">
-    <div class="box-label">Add Person</div>
-    <div class="inline-form">
-      <input type="text" id="hName" placeholder="Name">
-      <input type="date" id="hBirthDate" title="Birth date">
-      <input type="time" id="hBirthTime" title="Birth time">
-    </div>
-    <div class="inline-form" style="margin-top: 8px;">
-      <input type="date" id="hDeathDate" title="Death date (optional)">
-      <input type="time" id="hDeathTime" title="Death time (optional)">
-      <button id="hAddBtn" class="btn">Add</button>
-    </div>
-    <div class="box-sub" style="margin-top: 6px;">Birth date + exact birth time required. Death is optional, but needs BOTH date and time when recorded.</div>
-    <div id="addStatus" class="status-line"></div>
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="data" type="button">Data</button>
+    <button class="tab-btn" data-tab="analyze" type="button">Analyze</button>
   </div>
 
-  <div class="box">
-    <button class="collapsible-toggle" id="importToggle" type="button">
-      <span class="box-label">Mass Upload</span>
-      <span class="collapse-chevron" id="importChevron">&#9656;</span>
-    </button>
-    <div class="collapsible-body" id="importBody" hidden>
-      <div class="box-sub">One person per line: Name | birth | death. Blocks are YYYY-MM-DD HH:MM, 24h or AM/PM. Death block optional. Exact minutes required, no :00 guessing.</div>
-      <textarea id="importText" placeholder="Elvis Presley | 1935-01-08 4:35 AM | 1977-08-16 14:30&#10;Michael Jackson | 1958-08-29 19:33 | 2009-06-25 2:26 PM&#10;Taylor Swift | 1989-12-13 8:36 AM"></textarea>
-      <div class="inline-form" style="margin-top: 8px;">
-        <button id="importRunBtn" class="btn">Import</button>
+  <div id="tab-data">
+
+    <div class="box">
+      <button class="collapsible-toggle" id="addToggle" type="button">
+        <span class="box-label">Add Person</span>
+        <span class="collapse-chevron" id="addChevron">&#9656;</span>
+      </button>
+      <div class="collapsible-body" id="addBody" hidden>
+        <div class="inline-form">
+          <input type="text" id="hName" placeholder="Name">
+          <input type="date" id="hBirthDate" title="Birth date">
+          <input type="time" id="hBirthTime" title="Birth time">
+        </div>
+        <div class="inline-form" style="margin-top: 8px;">
+          <input type="date" id="hDeathDate" title="Death date (optional)">
+          <input type="time" id="hDeathTime" title="Death time (optional)">
+          <button id="hAddBtn" class="btn">Add</button>
+        </div>
+        <div class="box-sub" style="margin-top: 6px;">Birth date + exact birth time required. Death is optional, but needs BOTH date and time when recorded.</div>
+        <div id="addStatus" class="status-line"></div>
       </div>
-      <div id="importStatus" class="status-line"></div>
-      <ul id="importFails" class="fail-list"></ul>
     </div>
+
+    <div class="box">
+      <button class="collapsible-toggle" id="importToggle" type="button">
+        <span class="box-label">Mass Upload</span>
+        <span class="collapse-chevron" id="importChevron">&#9656;</span>
+      </button>
+      <div class="collapsible-body" id="importBody" hidden>
+        <div class="box-sub">One person per line: Name | birth | death. Blocks are YYYY-MM-DD HH:MM, 24h or AM/PM. Death block optional. Exact minutes required, no :00 guessing.</div>
+        <textarea id="importText" placeholder="Elvis Presley | 1935-01-08 4:35 AM | 1977-08-16 14:30&#10;Michael Jackson | 1958-08-29 19:33 | 2009-06-25 2:26 PM&#10;Taylor Swift | 1989-12-13 8:36 AM"></textarea>
+        <div class="inline-form" style="margin-top: 8px;">
+          <button id="importRunBtn" class="btn">Import</button>
+        </div>
+        <div id="importStatus" class="status-line"></div>
+        <ul id="importFails" class="fail-list"></ul>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="inline-form">
+        <input type="text" id="entrySearch" placeholder="Filter by name or date" autocomplete="off">
+        <span id="entryCount" class="count-chip"></span>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="codex-table" id="entriesTable">
+        <thead><tr id="entriesHead"></tr></thead>
+        <tbody id="entriesBody"></tbody>
+      </table>
+    </div>
+    <div id="tablePager"></div>
+
   </div>
 
-  <div class="box">
-    <button class="collapsible-toggle" id="distToggle" type="button">
-      <span class="box-label">Distribution</span>
-      <span class="collapse-chevron" id="distChevron">&#9656;</span>
-    </button>
-    <div class="collapsible-body" id="distBody" hidden>
+  <div id="tab-analyze" hidden>
+
+    <div class="box">
+      <div class="box-label">Distribution</div>
       <div class="box-sub">Which hour the event actually lands in for this category. Tap a bar for the people behind it.</div>
       <div class="inline-form">
         <select id="hourDistDim"></select>
         <span class="toggle-group">
-          <button class="btn-link mode-btn active" data-mode="exp" data-group="hdist">Expected</button>
+          <button class="btn-link mode-btn active" data-mode="exp" data-group="hdist">Compare</button>
           <button class="btn-link mode-btn" data-mode="raw" data-group="hdist">Raw</button>
         </span>
       </div>
       <div id="hourDistResults"></div>
     </div>
-  </div>
 
-  <div class="box">
-    <button class="collapsible-toggle" id="statToggle" type="button">
-      <span class="box-label">Death Hour Study</span>
-      <span class="collapse-chevron" id="statChevron">&#9656;</span>
-    </button>
-    <div class="collapsible-body" id="statBody" hidden>
+    <div class="box">
+      <div class="box-label">Death Hour Study</div>
       <div id="statResults"></div>
     </div>
-  </div>
 
-  <div class="box">
-    <div class="inline-form">
-      <input type="text" id="entrySearch" placeholder="Filter by name or date" autocomplete="off">
-      <span id="entryCount" class="count-chip"></span>
-    </div>
-  </div>
-
-  <div class="table-wrap">
-    <table class="codex-table" id="entriesTable">
-      <thead><tr id="entriesHead"></tr></thead>
-      <tbody id="entriesBody"></tbody>
-    </table>
   </div>
 
 </div>
@@ -117,10 +126,10 @@
 <script src="codex-compute.js?v=1"></script>
 <script src="codex-wiki.js?v=2"></script>
 <script src="codex-baseline.js?v=1"></script>
-<script src="codex-analytics.js?v=1"></script>
+<script src="codex-analytics.js?v=2"></script>
 <script src="codex-detail.js?v=1"></script>
 <script src="codex-cloud.js?v=1"></script>
-<script src="codex-hours.js?v=5"></script>
-<script src="codex-hour-field.js?v=3"></script>
+<script src="codex-hours.js?v=6"></script>
+<script src="codex-hour-field.js?v=4"></script>
 </body>
 </html>

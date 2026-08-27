@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#000000">
 <title>The Codex</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23000'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='38' font-weight='bold' fill='%23f5c542' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="codex.css?v=4">
+<link rel="stylesheet" href="codex.css?v=5">
 </head>
 <body>
 <div class="page">
@@ -28,6 +28,13 @@
   <div id="baselineProgress" hidden>
     <div class="status-line" id="baselineStatus"></div>
     <div class="progress-track"><div class="progress-fill" id="baselineFill"></div></div>
+  </div>
+
+  <div class="jump-pills">
+    <a class="jump-pill" href="#fieldsGrid">Fields</a>
+    <a class="jump-pill" href="#labBox">Leaderboard</a>
+    <a class="jump-pill" href="#rlBox">Reverse Lookup</a>
+    <a class="jump-pill" href="#crossBox">Cross-Field</a>
   </div>
 
   <div class="box">
@@ -54,7 +61,7 @@
   <div class="box-label" style="margin: 18px 0 10px;">Fields</div>
   <div id="fieldsGrid" class="fields-grid"></div>
 
-  <div class="box" style="margin-top: 18px;">
+  <div class="box" id="labBox" style="margin-top: 18px;">
     <button class="collapsible-toggle" id="labToggle" type="button">
       <span class="box-label">Leaderboard Lab</span>
       <span class="collapse-chevron" id="labChevron">&#9656;</span>
@@ -74,7 +81,7 @@
     </div>
   </div>
 
-  <div class="box">
+  <div class="box" id="rlBox">
     <button class="collapsible-toggle" id="rlToggle" type="button">
       <span class="box-label">Reverse Lookup</span>
       <span class="collapse-chevron" id="rlChevron">&#9656;</span>
@@ -90,7 +97,7 @@
     </div>
   </div>
 
-  <div class="box">
+  <div class="box" id="crossBox">
     <button class="collapsible-toggle" id="crossToggle" type="button">
       <span class="box-label">Cross-Field Compare</span>
       <span class="collapse-chevron" id="crossChevron">&#9656;</span>
@@ -127,7 +134,7 @@
 <script src="codex-compute.js?v=1"></script>
 <script src="codex-wiki.js?v=2"></script>
 <script src="codex-baseline.js?v=1"></script>
-<script src="codex-analytics.js?v=1"></script>
+<script src="codex-analytics.js?v=2"></script>
 <script src="codex-detail.js?v=1"></script>
 <script src="codex-seeds.js?v=1"></script>
 <script src="codex-cloud.js?v=1"></script>

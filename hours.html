@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#000000">
 <title>Hour Studies - The Codex</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23000'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='38' font-weight='bold' fill='%23f5c542' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="codex.css?v=4">
+<link rel="stylesheet" href="codex.css?v=5">
 </head>
 <body>
 <div class="page">
@@ -28,10 +28,12 @@
     </div>
   </div>
 
+  <div class="jump-pills"><a class="jump-pill" href="#hourFieldsGrid">Categories</a><a class="jump-pill" href="#hourDistBox">Distribution</a><a class="jump-pill" href="#statBox">Death Study</a></div>
+
   <div class="box-label" style="margin: 18px 0 10px;">Categories</div>
   <div id="hourFieldsGrid" class="fields-grid"></div>
 
-  <div class="box" style="margin-top: 18px;">
+  <div class="box" id="hourDistBox" style="margin-top: 18px;">
     <button class="collapsible-toggle" id="distToggle" type="button">
       <span class="box-label">Distribution</span>
       <span class="collapse-chevron" id="distChevron">&#9656;</span>
@@ -41,7 +43,7 @@
       <div class="inline-form">
         <select id="hourDistDim"></select>
         <span class="toggle-group">
-          <button class="btn-link mode-btn active" data-mode="exp" data-group="hdist">Expected</button>
+          <button class="btn-link mode-btn active" data-mode="exp" data-group="hdist">Compare</button>
           <button class="btn-link mode-btn" data-mode="raw" data-group="hdist">Raw</button>
         </span>
       </div>
@@ -49,7 +51,7 @@
     </div>
   </div>
 
-  <div class="box">
+  <div class="box" id="statBox">
     <button class="collapsible-toggle" id="statToggle" type="button">
       <span class="box-label">Death Hour Study</span>
       <span class="collapse-chevron" id="statChevron">&#9656;</span>
@@ -81,10 +83,10 @@
 <script src="codex-compute.js?v=1"></script>
 <script src="codex-wiki.js?v=2"></script>
 <script src="codex-baseline.js?v=1"></script>
-<script src="codex-analytics.js?v=1"></script>
+<script src="codex-analytics.js?v=2"></script>
 <script src="codex-detail.js?v=1"></script>
 <script src="codex-cloud.js?v=1"></script>
-<script src="codex-hours.js?v=5"></script>
+<script src="codex-hours.js?v=6"></script>
 <script src="codex-hours-home.js?v=2"></script>
 </body>
 </html>

@@ -42,12 +42,56 @@ function codexExpectedPct(dimId, key, mode, restItems) {
   return null;
 }
 
-function codexRatioBadgeHtml(actualPct, expectedPct) {
+/* ------------------------------------------- shared compare-bar pieces --- */
+/* The comparison language across the whole site: the gold bar is your data,
+   the faint ghost bar with the bright tick is what that value NORMALLY gets.
+   Gold past the tick = above normal. HOT/COLD tags only appear when the gap
+   is loud (1.5x above / 0.67x below); everything near normal stays quiet. */
+
+function codexNormallyPct(expectedPct) {
+  const v = expectedPct * 100;
+  return v > 0 && v < 0.1 ? '~0%' : `${v.toFixed(v < 9.5 ? 1 : 0)}%`;
+}
+
+function codexHotColdTag(pct, expectedPct) {
   if (expectedPct == null) return '';
-  if (expectedPct === 0) return '<span class="ratio-badge over">only here</span>';
-  const ratio = actualPct / expectedPct;
-  const cls = ratio >= 1.25 ? 'over' : (ratio <= 0.75 ? 'under' : '');
-  return `<span class="ratio-badge ${cls}">${ratio.toFixed(2)}x</span>`;
+  if (expectedPct === 0) return pct > 0 ? '<span class="ratio-badge over">HOT</span>' : '';
+  const ratio = pct / expectedPct;
+  if (ratio >= 1.5) return `<span class="ratio-badge over">HOT ${ratio >= 9.5 ? Math.round(ratio) : ratio.toFixed(1)}x</span>`;
+  if (ratio <= 0.67) return `<span class="ratio-badge under">COLD ${ratio.toFixed(1)}x</span>`;
+  return '';
+}
+
+function codexCompareBarRowHtml(key, count, pct, expectedPct, scaleMax, chipsHtml, labelHtml) {
+  const ghost = expectedPct != null
+    ? `<div class="bar-ghost" style="width:${Math.max(1, Math.round((expectedPct / scaleMax) * 100))}%"></div>`
+    : '';
+  const normally = expectedPct != null ? `<span class="normally">normally ${codexNormallyPct(expectedPct)}</span>` : '';
+  return `<div class="bar-row">
+    <div class="bar-key">${key}</div>
+    <div>${labelHtml || ''}<div class="bar-track">${ghost}<div class="bar-fill" style="width:${Math.max(2, Math.round((pct / scaleMax) * 100))}%"></div></div></div>
+    <div class="bar-meta"><span>${count}</span><span>${(pct * 100).toFixed(1)}%</span>${normally}${codexHotColdTag(pct, expectedPct)}</div>
+    <div class="bar-entries" hidden>${chipsHtml}</div>
+  </div>`;
+}
+
+function codexVerdictCardHtml(value, caption) {
+  return `<div class="verdict-card"><span class="verdict-num">${value}</span><span class="verdict-caption">${caption}</span></div>`;
+}
+
+/* Numbered pages of 30, EMAX-style: 5-page window with first/last shortcuts.
+   Caller renders into a container and wires .page-btn clicks. */
+const CODEX_PAGE_SIZE = 30;
+function codexPaginationHtml(totalPages, current) {
+  if (totalPages <= 1) return '';
+  const windowStart = Math.floor((current - 1) / 5) * 5 + 1;
+  const windowEnd = Math.min(windowStart + 4, totalPages);
+  let out = '<div class="pagination">';
+  if (current > 1) out += `<button class="btn-link page-btn" data-page="${current - 1}">&lsaquo;</button>`;
+  if (windowStart > 1) out += `<button class="btn-link page-btn" data-page="1">1</button><span class="page-ellipsis">&hellip;</span>`;
+  for (let p = windowStart; p <= windowEnd; p++) out += `<button class="btn-link page-btn${p === current ? ' active' : ''}" data-page="${p}">${p}</button>`;
+  if (windowEnd < totalPages) out += `<span class="page-ellipsis">&hellip;</span><button class="btn-link page-btn" data-page="${totalPages}">${totalPages}</button>`;
+  return out + '</div>';
 }
 
 /* The main leaderboard renderer. scoped/restItems are [{entry, field}].
@@ -57,27 +101,31 @@ function codexLeaderboardHtml(scoped, dimId, mode, restItems, opts) {
   if (!counts.size) return '<div class="status-line">No entries with usable dates in this scope.</div>';
   const total = Array.from(counts.values()).reduce((n, arr) => n + arr.length, 0);
   const rows = Array.from(counts.entries()).sort((a, b) => b[1].length - a[1].length);
-  const maxCount = rows[0][1].length;
   const showField = opts && opts.showField;
+  const dim = codexDimension(dimId);
 
-  const html = rows.map(([key, items]) => {
-    const pct = items.length / total;
-    const expected = codexExpectedPct(dimId, key, mode, restItems);
-    const chips = items.map((it) =>
+  const withExpected = rows.map(([key, items]) => ({
+    key,
+    items,
+    pct: items.length / total,
+    expectedPct: mode === 'raw' ? null : codexExpectedPct(dimId, key, mode, restItems),
+  }));
+  const scaleMax = Math.max(...withExpected.map((r) => Math.max(r.pct, r.expectedPct || 0)));
+
+  const html = withExpected.map((r) => {
+    const chips = r.items.map((it) =>
       `<span class="entry-chip" data-entry="${it.entry.id}">${codexEscape(it.entry.name)}${showField ? `<span class="chip-field">${codexEscape(it.field.name)}</span>` : ''}</span>`
     ).join('');
-    return `<div class="bar-row" data-key="${codexEscape(key)}">
-      <div class="bar-key">${codexEscape(key)}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2, Math.round((items.length / maxCount) * 100))}%"></div></div>
-      <div class="bar-meta"><span>${items.length}</span><span>${(pct * 100).toFixed(1)}%</span>${mode === 'raw' ? '' : codexRatioBadgeHtml(pct, expected)}</div>
-      <div class="bar-entries" hidden>${chips}</div>
-    </div>`;
+    return codexCompareBarRowHtml(codexEscape(r.key), r.items.length, r.pct, r.expectedPct, scaleMax, chips);
   }).join('');
 
+  const top = withExpected[0];
+  const verdict = codexVerdictCardHtml(codexEscape(top.key), `${dim.label} leader &middot; ${top.items.length} of ${total} (${(top.pct * 100).toFixed(0)}%)`);
+
   const note = mode === 'true' && !codexLoadBaseline()
-    ? '<div class="status-line err">True baseline not built yet. Build it from the toolbar to unlock honest ratios.</div>'
+    ? '<div class="status-line err">True baseline not built yet. Build it from the toolbar to unlock the normally markers.</div>'
     : '';
-  return note + `<div class="bar-rows">${html}</div>`;
+  return note + verdict + `<div class="bar-rows">${html}</div>`;
 }
 
 /* Wire expand-on-tap + entry chip popups inside a rendered leaderboard. */

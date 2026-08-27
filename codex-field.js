@@ -20,8 +20,7 @@ const propPairs = CODEX_KIND_PROPS[field.kind] || CODEX_KIND_PROPS.custom;
 let distMode = 'true';
 let sortCol = 'name';
 let sortAsc = true;
-let showAll = false;
-const RENDER_CAP = 300;
+let currentPage = 1;
 
 document.title = `${field.name} - The Codex`;
 
@@ -248,9 +247,15 @@ function renderEntries() {
   });
 
   document.getElementById('entryCount').textContent = `${rows.length} of ${field.entries.length}`;
-  const capped = !showAll && rows.length > RENDER_CAP;
-  const visible = capped ? rows.slice(0, RENDER_CAP) : rows;
-  document.getElementById('showAllBtn').hidden = !capped;
+  const totalPages = Math.max(1, Math.ceil(rows.length / CODEX_PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const visible = rows.slice((currentPage - 1) * CODEX_PAGE_SIZE, currentPage * CODEX_PAGE_SIZE);
+
+  const pager = document.getElementById('tablePager');
+  pager.innerHTML = codexPaginationHtml(totalPages, currentPage);
+  pager.querySelectorAll('.page-btn').forEach((btn) => {
+    btn.addEventListener('click', () => { currentPage = Number(btn.dataset.page); renderEntries(); });
+  });
 
   document.getElementById('entriesBody').innerHTML = visible.map(({ e, c }) =>
     `<tr data-entry="${e.id}">${TABLE_COLS.map((tc) => `<td class="${tc.cls}">${tc.cell(e, c)}</td>`).join('')}<td><button class="row-del" data-del="${e.id}" title="Delete">&times;</button></td></tr>`
@@ -276,8 +281,17 @@ function renderEntries() {
   });
 }
 
-document.getElementById('entrySearch').addEventListener('input', renderEntries);
-document.getElementById('showAllBtn').addEventListener('click', () => { showAll = true; renderEntries(); });
+document.getElementById('entrySearch').addEventListener('input', () => { currentPage = 1; renderEntries(); });
+
+/* ---------------------------------------------------------------- tabs --- */
+
+document.querySelectorAll('.tab-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b === btn));
+    document.getElementById('tab-data').hidden = btn.dataset.tab !== 'data';
+    document.getElementById('tab-analyze').hidden = btn.dataset.tab !== 'analyze';
+  });
+});
 
 /* ------------------------------------------------- rename / delete ------ */
 
@@ -302,8 +316,8 @@ function renderTitle() {
   document.getElementById('fieldTitleChip').textContent = `${field.name} (${kindInfo.label})`;
 }
 
+codexWireCollapsible('addToggle', 'addBody', 'addChevron');
 codexWireCollapsible('importToggle', 'importBody', 'importChevron');
-codexWireCollapsible('distToggle', 'distBody', 'distChevron');
 document.getElementById('distDim').innerHTML = codexDimensionOptionsHtml('lp');
 
 renderTitle();

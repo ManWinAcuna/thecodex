@@ -15,6 +15,7 @@ if (!field) {
 
 let sortCol = 'name';
 let sortAsc = true;
+let currentPage = 1;
 
 document.title = `${field.name} - Hour Studies`;
 
@@ -164,7 +165,17 @@ function renderEntries() {
   });
 
   document.getElementById('entryCount').textContent = `${rows.length} of ${field.entries.length}`;
-  document.getElementById('entriesBody').innerHTML = rows.map(({ e, c }) =>
+  const totalPages = Math.max(1, Math.ceil(rows.length / CODEX_PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const visible = rows.slice((currentPage - 1) * CODEX_PAGE_SIZE, currentPage * CODEX_PAGE_SIZE);
+
+  const pager = document.getElementById('tablePager');
+  pager.innerHTML = codexPaginationHtml(totalPages, currentPage);
+  pager.querySelectorAll('.page-btn').forEach((btn) => {
+    btn.addEventListener('click', () => { currentPage = Number(btn.dataset.page); renderEntries(); });
+  });
+
+  document.getElementById('entriesBody').innerHTML = visible.map(({ e, c }) =>
     `<tr data-entry="${e.id}">${HOUR_COLS.map((tc) => `<td class="${tc.cls}">${tc.cell(e, c)}</td>`).join('')}<td><button class="row-del" data-del="${e.id}" title="Delete">&times;</button></td></tr>`
   ).join('');
 
@@ -188,7 +199,17 @@ function renderEntries() {
   });
 }
 
-document.getElementById('entrySearch').addEventListener('input', renderEntries);
+document.getElementById('entrySearch').addEventListener('input', () => { currentPage = 1; renderEntries(); });
+
+/* ---------------------------------------------------------------- tabs --- */
+
+document.querySelectorAll('.tab-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b === btn));
+    document.getElementById('tab-data').hidden = btn.dataset.tab !== 'data';
+    document.getElementById('tab-analyze').hidden = btn.dataset.tab !== 'analyze';
+  });
+});
 
 /* ------------------------------------------------- rename / delete ------ */
 
@@ -213,9 +234,8 @@ function renderTitle() {
   document.getElementById('fieldTitleChip').textContent = `${field.name} (Hour Studies)`;
 }
 
+codexWireCollapsible('addToggle', 'addBody', 'addChevron');
 codexWireCollapsible('importToggle', 'importBody', 'importChevron');
-codexWireCollapsible('statToggle', 'statBody', 'statChevron');
-codexWireCollapsible('distToggle', 'distBody', 'distChevron');
 document.getElementById('hourDistDim').innerHTML = codexHourDimensionOptionsHtml('deathHour');
 renderTitle();
 renderEntries();

@@ -171,24 +171,31 @@ function codexDeathHourStudyHtml(items, showField) {
     CODEX_DEATH_STUDY_METRICS.forEach((m) => { if (deathFlags[m.id]) acc[m.id].hits.push(it); });
   });
 
-  const maxHits = Math.max(1, ...CODEX_DEATH_STUDY_METRICS.map((m) => acc[m.id].hits.length));
-  const rows = CODEX_DEATH_STUDY_METRICS.map((m) => {
+  const enriched = CODEX_DEATH_STUDY_METRICS.map((m) => {
     const a = acc[m.id];
-    const pct = a.hits.length / dead.length;
-    const expectedPct = a.expected > 0 ? a.expected / dead.length : null;
-    const badge = (a.hits.length || expectedPct != null) ? codexRatioBadgeHtml(pct, expectedPct) : '';
-    return `<div class="bar-row">
-      <div class="bar-key">${a.hits.length}</div>
-      <div>
-        <div class="bar-label">${m.label}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2, Math.round((a.hits.length / maxHits) * 100))}%"></div></div>
-      </div>
-      <div class="bar-meta"><span>${(pct * 100).toFixed(1)}%</span><span>exp ${a.expected.toFixed(2)}</span>${badge}</div>
-      <div class="bar-entries" hidden>${a.hits.map((it) => codexHourChipHtml(it, showField)).join('')}</div>
-    </div>`;
-  }).join('');
+    return {
+      label: m.label,
+      hits: a.hits,
+      pct: a.hits.length / dead.length,
+      expectedPct: a.expected > 0 ? a.expected / dead.length : null,
+    };
+  });
+  const scaleMax = Math.max(0.001, ...enriched.map((r) => Math.max(r.pct, r.expectedPct || 0)));
 
-  return `<div class="status-line">${dead.length} deaths in scope</div><div class="bar-rows">${rows}</div>`;
+  const rows = enriched.map((r) => codexCompareBarRowHtml(
+    String(r.hits.length), r.hits.length, r.pct, r.expectedPct, scaleMax,
+    r.hits.map((it) => codexHourChipHtml(it, showField)).join(''),
+    `<div class="bar-label">${r.label}</div>`
+  )).join('');
+
+  const loudest = enriched
+    .filter((r) => r.hits.length && r.expectedPct)
+    .sort((a, b) => (b.pct / b.expectedPct) - (a.pct / a.expectedPct))[0];
+  const verdict = loudest
+    ? codexVerdictCardHtml(`${(loudest.pct / loudest.expectedPct).toFixed(1)}x`, `${loudest.label} &middot; ${loudest.hits.length} of ${dead.length} deaths, normally ${codexNormallyPct(loudest.expectedPct)}`)
+    : '';
+
+  return `<div class="status-line">${dead.length} deaths in scope</div>${verdict}<div class="bar-rows">${rows}</div>`;
 }
 
 /* ---------------------------------------------- hour distribution bars --- */
@@ -293,21 +300,24 @@ function codexHourDistributionHtml(items, dimId, mode, showField) {
   });
   if (!counts.size) return '<div class="status-line">Nothing in this scope carries that dimension yet.</div>';
   const total = contributors.length;
-  const rows = Array.from(counts.entries()).sort((a, b) => b[1].length - a[1].length);
-  const maxCount = rows[0][1].length;
+  const rows = Array.from(counts.entries()).sort((a, b) => b[1].length - a[1].length)
+    .map(([key, hits]) => ({
+      key,
+      hits,
+      pct: hits.length / total,
+      expectedPct: mode === 'raw' ? null : dim.expectedPct(key, contributors),
+    }));
+  const scaleMax = Math.max(...rows.map((r) => Math.max(r.pct, r.expectedPct || 0)));
 
-  const html = rows.map(([key, hits]) => {
-    const pct = hits.length / total;
-    const expectedPct = mode === 'raw' ? null : dim.expectedPct(key, contributors);
-    return `<div class="bar-row">
-      <div class="bar-key">${codexEscape(key)}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2, Math.round((hits.length / maxCount) * 100))}%"></div></div>
-      <div class="bar-meta"><span>${hits.length}</span><span>${(pct * 100).toFixed(1)}%</span>${expectedPct != null ? codexRatioBadgeHtml(pct, expectedPct) : ''}</div>
-      <div class="bar-entries" hidden>${hits.map((it) => codexHourChipHtml(it, showField)).join('')}</div>
-    </div>`;
-  }).join('');
+  const html = rows.map((r) => codexCompareBarRowHtml(
+    codexEscape(r.key), r.hits.length, r.pct, r.expectedPct, scaleMax,
+    r.hits.map((it) => codexHourChipHtml(it, showField)).join('')
+  )).join('');
 
-  return `<div class="status-line">${total} in scope</div><div class="bar-rows">${html}</div>`;
+  const top = rows[0];
+  const verdict = codexVerdictCardHtml(codexEscape(top.key), `${dim.label} leader &middot; ${top.hits.length} of ${total} (${(top.pct * 100).toFixed(0)}%)`);
+
+  return `<div class="status-line">${total} in scope</div>${verdict}<div class="bar-rows">${html}</div>`;
 }
 
 /* Same expand-and-chip wiring as the main wing's leaderboard, but chips

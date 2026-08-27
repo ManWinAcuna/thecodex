@@ -101,35 +101,92 @@ function codexParseHourLine(line) {
   };
 }
 
-/* ------------------------------------------------- own-hour death stat --- */
+/* ------------------------------------------------ death hour study ------- */
+/* Enemy comes from the REAL compat tables, never invented: score 10 is the
+   true enemy cell, the 10+20 tier also counts the 20 cells. Numerology
+   enemy = birth root vs the personal hour VALUE running at death, checked
+   on the digital line and (for PM births, either-counts rule) the military
+   line too. Vietnamese enemy = birth shichen animal vs the death hour's
+   animal via VIETNAMESE_TABLE. Expected counts are honest per person: each
+   person's own 24-row table is scanned for how many hours actually qualify,
+   so a root with many enemy hours raises its own expectation. */
 
-function codexOwnHourStatHtml(items, resolveAttr) {
+function codexHourRowEnemyNum(table, row, threshold) {
+  if (numerologyCompat(table.digitalRoot, row.digitalReduced) <= threshold) return true;
+  return table.isPM && numerologyCompat(table.militaryRoot, row.militaryReduced) <= threshold;
+}
+
+function codexHourRowEnemyViet(table, row) {
+  return vietnameseCompat(table.ownSign, row.sign) <= 10;
+}
+
+const CODEX_DEATH_STUDY_METRICS = [
+  { id: 'ownShichen', label: 'Own shichen' },
+  { id: 'ownExact', label: 'Own exact hour' },
+  { id: 'numE10', label: 'Numerology enemy (10)' },
+  { id: 'numE20', label: 'Numerology enemy (10 + 20)' },
+  { id: 'vietE', label: 'Vietnamese enemy' },
+  { id: 'bothE10', label: 'Both enemies (10)' },
+  { id: 'bothE20', label: 'Both enemies (10 + 20)' },
+];
+
+function codexHourRowStudyFlags(table, row) {
+  const n10 = codexHourRowEnemyNum(table, row, 10);
+  const n20 = codexHourRowEnemyNum(table, row, 20);
+  const v = codexHourRowEnemyViet(table, row);
+  return {
+    ownShichen: row.sign === table.ownSign,
+    ownExact: row.isOwnHour,
+    numE10: n10,
+    numE20: n20,
+    vietE: v,
+    bothE10: n10 && v,
+    bothE20: n20 && v,
+  };
+}
+
+function codexDeathHourStudyHtml(items, showField) {
   const dead = items.filter((it) => it.entry.deathDate && it.entry.deathTime);
   if (!dead.length) return '<div class="status-line">No deaths recorded in this scope yet.</div>';
-  const shichenHits = [];
-  const exactHits = [];
+
+  const acc = {};
+  CODEX_DEATH_STUDY_METRICS.forEach((m) => { acc[m.id] = { hits: [], expected: 0 }; });
+
   dead.forEach((it) => {
-    const codes = codexComputeHourCodes(it.entry);
-    if (codes.death.ownShichen) shichenHits.push(it);
-    if (codes.death.ownExactHour) exactHits.push(it);
+    const [bh, bm] = it.entry.birthTime.split(':').map(Number);
+    const table = getPersonalHoursTable(bh, bm);
+    const dh = Number(it.entry.deathTime.split(':')[0]);
+    const deathRow = table.rows[(dh + 1) % 24];
+
+    table.rows.forEach((row) => {
+      const flags = codexHourRowStudyFlags(table, row);
+      CODEX_DEATH_STUDY_METRICS.forEach((m) => { if (flags[m.id]) acc[m.id].expected += 1 / 24; });
+    });
+
+    const deathFlags = codexHourRowStudyFlags(table, deathRow);
+    CODEX_DEATH_STUDY_METRICS.forEach((m) => { if (deathFlags[m.id]) acc[m.id].hits.push(it); });
   });
-  const expShichen = dead.length / 12;
-  const expExact = dead.length / 24;
-  const chip = (it) => `<span class="entry-chip" data-entry="${it.entry.id}">${codexEscape(it.entry.name)}${resolveAttr ? `<span class="chip-field">${codexEscape(it.field.name)}</span>` : ''}</span>`;
-  return `
-    <div class="detail-grid">
-      ${codexFactTileHtml('Deaths recorded', dead.length)}
-      ${codexFactTileHtml('Own shichen', shichenHits.length)}
-      ${codexFactTileHtml('Expected (1 in 12)', expShichen.toFixed(1))}
-      ${codexFactTileHtml('Own exact hour', exactHits.length)}
-      ${codexFactTileHtml('Expected (1 in 24)', expExact.toFixed(1))}
-    </div>
-    <div class="bar-meta" style="margin-top:8px;">
-      ${codexRatioBadgeHtml(shichenHits.length / dead.length, 1 / 12)} shichen
-      ${codexRatioBadgeHtml(exactHits.length / dead.length, 1 / 24)} exact hour
-    </div>
-    ${shichenHits.length ? `<div class="detail-section-label">Died in their own shichen</div><div class="bar-entries" style="display:flex;">${shichenHits.map(chip).join('')}</div>` : ''}
-  `;
+
+  const chip = (it) => `<span class="entry-chip" data-entry="${it.entry.id}">${codexEscape(it.entry.name)}${showField ? `<span class="chip-field">${codexEscape(it.field.name)}</span>` : ''}</span>`;
+
+  const rows = CODEX_DEATH_STUDY_METRICS.map((m) => {
+    const a = acc[m.id];
+    const expectedPct = a.expected > 0 ? a.expected / dead.length : null;
+    const badge = (a.hits.length || expectedPct != null) ? codexRatioBadgeHtml(a.hits.length / dead.length, expectedPct) : '';
+    return `<div class="study-row">
+      <span class="study-label">${m.label}</span>
+      <span class="study-nums">${a.hits.length} &middot; exp ${a.expected.toFixed(2)}</span>
+      ${badge}
+      ${a.hits.length ? `<div class="bar-entries" style="display:flex;">${a.hits.map(chip).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  return `<div class="status-line">${dead.length} deaths in scope</div>${rows}`;
+}
+
+/* Kept as an alias so nothing external breaks. */
+function codexOwnHourStatHtml(items, showField) {
+  return codexDeathHourStudyHtml(items, showField);
 }
 
 /* -------------------------------------------------------- detail popup --- */

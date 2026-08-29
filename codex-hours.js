@@ -317,7 +317,10 @@ function codexHourDistributionHtml(items, dimId, mode, showField) {
   const top = rows[0];
   const verdict = codexVerdictCardHtml(codexEscape(top.key), `${dim.label} leader &middot; ${top.hits.length} of ${total} (${(top.pct * 100).toFixed(0)}%)`);
 
-  return codexTotalLineHtml(total, 'people carry this dimension in this scope') + verdict + `<div class="bar-rows">${html}</div>`;
+  const wheel = CODEX_ANIMAL_DIM_IDS.includes(dimId)
+    ? codexAnimalWheelHtml(rows.map((r) => ({ key: r.key, count: r.hits.length, pct: r.pct })))
+    : '';
+  return codexTotalLineHtml(total, 'people carry this dimension in this scope') + verdict + wheel + `<div class="bar-rows">${html}</div>`;
 }
 
 /* Same expand-and-chip wiring as the main wing's leaderboard, but chips

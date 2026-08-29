@@ -131,7 +131,10 @@ function codexLeaderboardHtml(scoped, dimId, mode, restItems, opts) {
   const note = mode === 'true' && !codexLoadBaseline()
     ? '<div class="status-line err">True baseline not built yet. Build it from the toolbar to unlock the normally markers.</div>'
     : '';
-  return note + codexTotalLineHtml(total, 'entries with a usable date in this scope') + verdict + `<div class="bar-rows">${html}</div>`;
+  const wheel = CODEX_ANIMAL_DIM_IDS.includes(dimId)
+    ? codexAnimalWheelHtml(withExpected.map((r) => ({ key: r.key, count: r.items.length, pct: r.pct })))
+    : '';
+  return note + codexTotalLineHtml(total, 'entries with a usable date in this scope') + verdict + wheel + `<div class="bar-rows">${html}</div>`;
 }
 
 /* Wire expand-on-tap + entry chip popups inside a rendered leaderboard. */

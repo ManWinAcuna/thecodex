@@ -10,14 +10,14 @@ let field = codexFindField(db, fieldId);
 
 if (!field) {
   document.querySelector('.page').innerHTML =
-    '<div class="box"><div class="box-label">Field not found</div><a class="back-link" href="index.html">&larr; Back to The Codex</a></div>';
+    '<div class="box"><div class="box-label">Field not found</div><a class="back-link" href="fields.html">&larr; Back to Fields</a></div>';
   throw new Error('unknown field');
 }
 
 const kindInfo = CODEX_FIELD_KINDS[field.kind] || CODEX_FIELD_KINDS.custom;
 const propPairs = CODEX_KIND_PROPS[field.kind] || CODEX_KIND_PROPS.custom;
 
-let distMode = 'true';
+let distMode = codexRecall('field_distMode', 'true');
 let sortCol = 'name';
 let sortAsc = true;
 let currentPage = 1;
@@ -195,10 +195,11 @@ function renderDist() {
   });
 }
 
-document.getElementById('distDim').addEventListener('change', renderDist);
+document.getElementById('distDim').addEventListener('change', () => { codexRemember('field_distDim', document.getElementById('distDim').value); renderDist(); });
 document.querySelectorAll('.mode-btn[data-group="dist"]').forEach((btn) => {
   btn.addEventListener('click', () => {
     distMode = btn.dataset.mode;
+    codexRemember('field_distMode', distMode);
     document.querySelectorAll('.mode-btn[data-group="dist"]').forEach((b) => b.classList.toggle('active', b === btn));
     renderDist();
   });
@@ -214,9 +215,9 @@ const TABLE_COLS = [
   { id: 'day', label: 'Day', val: (e, c) => c.dayBorn, cell: (e, c) => c.dayBorn, cls: 'num' },
   { id: 'daynum', label: 'Day#', val: (e, c) => c.dayNum, cell: (e, c) => c.dayNum, cls: 'num' },
   { id: 'combo', label: 'Combo', val: (e, c) => c.combo, cell: (e, c) => c.combo, cls: 'num' },
-  { id: 'vy', label: 'Year', val: (e, c) => codexAnimalSortKey(c.vietYear), cell: (e, c) => codexEscape(c.vietYear), cls: 'dim-cell' },
-  { id: 'vm', label: 'Month', val: (e, c) => codexAnimalSortKey(c.vietMonth), cell: (e, c) => codexEscape(c.vietMonth), cls: 'dim-cell' },
-  { id: 'vd', label: 'Day An.', val: (e, c) => codexAnimalSortKey(c.vietDay), cell: (e, c) => codexEscape(c.vietDay), cls: 'dim-cell' },
+  { id: 'vy', label: 'Year', val: (e, c) => codexAnimalSortKey(c.vietYear), cell: (e, c) => codexAnimalLabel(c.vietYear), cls: 'dim-cell' },
+  { id: 'vm', label: 'Month', val: (e, c) => codexAnimalSortKey(c.vietMonth), cell: (e, c) => codexAnimalLabel(c.vietMonth), cls: 'dim-cell' },
+  { id: 'vd', label: 'Day An.', val: (e, c) => codexAnimalSortKey(c.vietDay), cell: (e, c) => codexAnimalLabel(c.vietDay), cls: 'dim-cell' },
 ];
 
 function renderHead() {
@@ -238,6 +239,27 @@ function renderEntries() {
   renderHead();
   const q = document.getElementById('entrySearch').value.trim().toLowerCase();
   const col = TABLE_COLS.find((c) => c.id === sortCol) || TABLE_COLS[0];
+
+  if (!field.entries.length) {
+    document.getElementById('entryCount').textContent = '';
+    document.getElementById('tablePager').innerHTML = '';
+    document.getElementById('entriesBody').innerHTML = `<tr><td colspan="${TABLE_COLS.length + 1}">
+      <div class="empty-state">
+        <div class="empty-state-icon">&#128269;</div>
+        <div class="empty-state-title">No entries yet in ${codexEscape(field.name)}</div>
+        <div class="empty-state-sub">Look up a name (real dates only, resolved from Wikidata) or bulk-import a list above.</div>
+        <div class="empty-state-actions"><button class="btn" id="emptyAddBtn" type="button">Add Entry</button></div>
+      </div>
+    </td></tr>`;
+    const emptyBtn = document.getElementById('emptyAddBtn');
+    if (emptyBtn) emptyBtn.addEventListener('click', () => {
+      document.getElementById('addBody').hidden = false;
+      document.getElementById('addChevron').classList.add('open');
+      document.getElementById('lookupName').focus();
+    });
+    return;
+  }
+
   let rows = field.entries.map((e) => ({ e, c: codexComputeCodes(e.date) }));
   if (q) rows = rows.filter((r) => r.e.name.toLowerCase().includes(q) || r.e.date.includes(q));
   rows.sort((a, b) => {
@@ -307,7 +329,7 @@ document.getElementById('deleteFieldBtn').addEventListener('click', () => {
   if (!confirm(`Delete the whole ${field.name} field (${field.entries.length} entries)? This cannot be undone here. Export a backup first if unsure.`)) return;
   db.fields = db.fields.filter((f) => f.id !== field.id);
   codexSaveDB(db);
-  location.href = 'index.html';
+  location.href = 'fields.html';
 });
 
 /* ---------------------------------------------------------------- init --- */
@@ -318,17 +340,23 @@ function renderTitle() {
 
 codexWireCollapsible('addToggle', 'addBody', 'addChevron');
 codexWireCollapsible('importToggle', 'importBody', 'importChevron');
-document.getElementById('distDim').innerHTML = codexDimensionOptionsHtml('lp');
+document.getElementById('distDim').innerHTML = codexDimensionOptionsHtml(codexRecall('field_distDim', 'lp'));
 
 renderTitle();
 renderEntries();
 renderDist();
+codexShellInit('fields');
+codexHandleEntryHash((entryId) => {
+  const entry = field.entries.find((e) => e.id === entryId);
+  return entry ? { entry, field } : null;
+});
 
 codexCloudInit(() => {
   db = codexLoadDB();
   field = codexFindField(db, fieldId);
-  if (!field) { location.href = 'index.html'; return; }
+  if (!field) { location.href = 'fields.html'; return; }
   renderTitle();
   renderEntries();
   renderDist();
+  codexRenderSidebar('fields');
 });

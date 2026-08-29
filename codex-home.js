@@ -7,7 +7,7 @@
 let db = codexLoadDB();
 codexApplySeedFields(db);
 
-let labMode = 'true';
+let labMode = codexRecall('fields_labMode', 'true');
 
 function resolveItemById(entryId) {
   const all = codexAllEntries(db);
@@ -19,14 +19,18 @@ function resolveItemById(entryId) {
 function renderFields() {
   const grid = document.getElementById('fieldsGrid');
   if (!db.fields.length) {
-    grid.innerHTML = '<div class="status-line">No fields yet. Add one above.</div>';
+    grid.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">&#128209;</div>
+      <div class="empty-state-title">No fields yet</div>
+      <div class="empty-state-sub">A field is a study group - athletes, brands, whatever you want to decode. Add one above, then look up or import names into it.</div>
+    </div>`;
     return;
   }
   grid.innerHTML = db.fields.map((f) => {
     const kind = CODEX_FIELD_KINDS[f.kind] || CODEX_FIELD_KINDS.custom;
-    return `<a class="field-tile" href="field.html?id=${f.id}">
-      <div class="field-tile-name">${codexEscape(f.name)}</div>
-      <div class="field-tile-meta"><span>${f.entries.length} entries</span><span class="field-kind-chip">${kind.label}</span></div>
+    return `<a class="data-card cx-reveal" href="field.html?id=${f.id}">
+      <div class="data-card-name">${codexEscape(f.name)}</div>
+      <div class="data-card-meta"><span>${f.entries.length} entries</span><span class="field-kind-chip">${kind.label}</span></div>
     </a>`;
   }).join('');
 }
@@ -45,6 +49,7 @@ document.getElementById('addFieldBtn').addEventListener('click', () => {
   renderFields();
   renderScopeSelect();
   renderCrossFields();
+  codexRenderSidebar('fields');
 });
 
 /* ------------------------------------------------------ global search --- */
@@ -94,6 +99,11 @@ document.getElementById('buildBaselineBtn').addEventListener('click', () => {
       wrap.hidden = true;
       refreshBaselineChip();
       renderLab();
+      // Reverse Lookup's value dropdowns (Life Path's "13/4" among them) are
+      // sourced from the baseline's own keys - without this they'd stay
+      // frozen at whatever was available before the build ever ran, even
+      // though the baseline (and its ratios) are now current.
+      renderReverseFilters();
     }
   );
 });
@@ -102,7 +112,7 @@ document.getElementById('buildBaselineBtn').addEventListener('click', () => {
 
 function renderScopeSelect() {
   const sel = document.getElementById('labScope');
-  const prev = sel.value;
+  const prev = sel.value || codexRecall('fields_labScope', 'all');
   sel.innerHTML = '<option value="all">All fields</option>' +
     db.fields.map((f) => `<option value="${f.id}">${codexEscape(f.name)}</option>`).join('');
   if (prev && Array.from(sel.options).some((o) => o.value === prev)) sel.value = prev;
@@ -125,11 +135,12 @@ function renderLab() {
   codexWireLeaderboard(out, resolveItemById);
 }
 
-document.getElementById('labScope').addEventListener('change', renderLab);
-document.getElementById('labDim').addEventListener('change', renderLab);
+document.getElementById('labScope').addEventListener('change', () => { codexRemember('fields_labScope', document.getElementById('labScope').value); renderLab(); });
+document.getElementById('labDim').addEventListener('change', () => { codexRemember('fields_labDim', document.getElementById('labDim').value); renderLab(); });
 document.querySelectorAll('.mode-btn[data-group="lab"]').forEach((btn) => {
   btn.addEventListener('click', () => {
     labMode = btn.dataset.mode;
+    codexRemember('fields_labMode', labMode);
     document.querySelectorAll('.mode-btn[data-group="lab"]').forEach((b) => b.classList.toggle('active', b === btn));
     renderLab();
   });
@@ -197,7 +208,7 @@ document.getElementById('exportBtn').addEventListener('click', () => codexExport
 document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
 document.getElementById('importFile').addEventListener('change', (ev) => {
   const file = ev.target.files[0];
-  if (file) codexImportBackup(file, (data) => { db = data; renderAll(); });
+  if (file) codexImportBackup(file, (data) => { db = data; renderAll(); codexRenderSidebar('fields'); });
   ev.target.value = '';
 });
 
@@ -216,9 +227,10 @@ codexWireCollapsible('labToggle', 'labBody', 'labChevron');
 codexWireCollapsible('rlToggle', 'rlBody', 'rlChevron');
 codexWireCollapsible('crossToggle', 'crossBody', 'crossChevron');
 
-document.getElementById('labDim').innerHTML = codexDimensionOptionsHtml('lp');
+document.getElementById('labDim').innerHTML = codexDimensionOptionsHtml(codexRecall('fields_labDim', 'lp'));
 document.getElementById('crossDim').innerHTML = codexDimensionOptionsHtml('lp');
 
 renderAll();
+codexShellInit('fields');
 
-codexCloudInit(() => { db = codexLoadDB(); renderAll(); });
+codexCloudInit(() => { db = codexLoadDB(); renderAll(); codexRenderSidebar('fields'); });

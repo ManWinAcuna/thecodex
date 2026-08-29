@@ -91,7 +91,7 @@ document.getElementById('importRunBtn').addEventListener('click', () => {
 
 /* ---------------------------------------------------------------- stat --- */
 
-let hourDistMode = 'exp';
+let hourDistMode = codexRecall('hourField_mode', 'exp');
 
 function renderStat() {
   const out = document.getElementById('statResults');
@@ -107,10 +107,11 @@ function renderHourDist() {
   codexWireHourBars(out, items);
 }
 
-document.getElementById('hourDistDim').addEventListener('change', renderHourDist);
+document.getElementById('hourDistDim').addEventListener('change', () => { codexRemember('hourField_dim', document.getElementById('hourDistDim').value); renderHourDist(); });
 document.querySelectorAll('.mode-btn[data-group="hdist"]').forEach((btn) => {
   btn.addEventListener('click', () => {
     hourDistMode = btn.dataset.mode;
+    codexRemember('hourField_mode', hourDistMode);
     document.querySelectorAll('.mode-btn[data-group="hdist"]').forEach((b) => b.classList.toggle('active', b === btn));
     renderHourDist();
   });
@@ -124,13 +125,13 @@ const HOUR_COLS = [
   { id: 'btime', label: 'B.Time', val: (e) => e.birthTime, cell: (e) => codexEscape(e.birthTime), cls: 'dim-cell' },
   { id: 'root', label: 'Root', val: (e, c) => Number(c.root), cell: (e, c) => c.root, cls: 'num' },
   { id: 'mil', label: 'Mil', val: (e, c) => (c.rootMil == null ? -1 : Number(c.rootMil)), cell: (e, c) => (c.rootMil == null ? '' : c.rootMil), cls: 'num' },
-  { id: 'banimal', label: 'B.Hr Animal', val: (e, c) => codexAnimalSortKey(c.birthAnimal), cell: (e, c) => codexEscape(c.birthAnimal), cls: 'dim-cell' },
+  { id: 'banimal', label: 'B.Hr Animal', val: (e, c) => codexAnimalSortKey(c.birthAnimal), cell: (e, c) => codexAnimalLabel(c.birthAnimal), cls: 'dim-cell' },
   { id: 'died', label: 'Died', val: (e) => e.deathDate || '', cell: (e) => codexEscape(e.deathDate || ''), cls: 'dim-cell' },
   { id: 'dtime', label: 'D.Time', val: (e) => e.deathTime || '', cell: (e) => codexEscape(e.deathTime || ''), cls: 'dim-cell' },
   { id: 'dph', label: 'Death PH', val: (e, c) => (c.death ? Number(c.death.personalHour) : -1), cell: (e, c) => (c.death ? c.death.personalHour : ''), cls: 'num' },
   { id: 'dphm', label: 'PH Mil', val: (e, c) => (c.death && c.death.personalHourMil != null ? Number(c.death.personalHourMil) : -1), cell: (e, c) => (c.death && c.death.personalHourMil != null ? c.death.personalHourMil : ''), cls: 'num' },
   { id: 'droot', label: 'D.Root', val: (e, c) => (c.death ? Number(c.death.clockRoot) : -1), cell: (e, c) => (c.death ? c.death.clockRoot : ''), cls: 'num' },
-  { id: 'danimal', label: 'D.Hr Animal', val: (e, c) => (c.death ? codexAnimalSortKey(c.death.animal) : 99), cell: (e, c) => (c.death ? codexEscape(c.death.animal) : ''), cls: 'dim-cell' },
+  { id: 'danimal', label: 'D.Hr Animal', val: (e, c) => (c.death ? codexAnimalSortKey(c.death.animal) : 99), cell: (e, c) => (c.death ? codexAnimalLabel(c.death.animal) : ''), cls: 'dim-cell' },
   { id: 'own', label: 'Own', val: (e, c) => (c.death ? (c.death.ownExactHour ? 2 : (c.death.ownShichen ? 1 : 0)) : -1), cell: (e, c) => (c.death ? (c.death.ownExactHour ? '<span class="own-badge">EXACT</span>' : (c.death.ownShichen ? '<span class="own-badge">SHICHEN</span>' : '')) : ''), cls: '' },
 ];
 
@@ -153,6 +154,27 @@ function renderEntries() {
   renderHead();
   const q = document.getElementById('entrySearch').value.trim().toLowerCase();
   const col = HOUR_COLS.find((c) => c.id === sortCol) || HOUR_COLS[0];
+
+  if (!field.entries.length) {
+    document.getElementById('entryCount').textContent = '';
+    document.getElementById('tablePager').innerHTML = '';
+    document.getElementById('entriesBody').innerHTML = `<tr><td colspan="${HOUR_COLS.length + 1}">
+      <div class="empty-state">
+        <div class="empty-state-icon">&#9202;</div>
+        <div class="empty-state-title">No one in ${codexEscape(field.name)} yet</div>
+        <div class="empty-state-sub">Add a person's exact birth time (and death time, if known) above, or mass-upload a whole list.</div>
+        <div class="empty-state-actions"><button class="btn" id="emptyAddBtn" type="button">Add Person</button></div>
+      </div>
+    </td></tr>`;
+    const emptyBtn = document.getElementById('emptyAddBtn');
+    if (emptyBtn) emptyBtn.addEventListener('click', () => {
+      document.getElementById('addBody').hidden = false;
+      document.getElementById('addChevron').classList.add('open');
+      document.getElementById('hName').focus();
+    });
+    return;
+  }
+
   let rows = field.entries.map((e) => ({ e, c: codexComputeHourCodes(e) }));
   if (q) {
     rows = rows.filter((r) =>
@@ -236,11 +258,16 @@ function renderTitle() {
 
 codexWireCollapsible('addToggle', 'addBody', 'addChevron');
 codexWireCollapsible('importToggle', 'importBody', 'importChevron');
-document.getElementById('hourDistDim').innerHTML = codexHourDimensionOptionsHtml('deathHour');
+document.getElementById('hourDistDim').innerHTML = codexHourDimensionOptionsHtml(codexRecall('hourField_dim', 'deathHour'));
 renderTitle();
 renderEntries();
 renderStat();
 renderHourDist();
+codexShellInit('hours');
+codexHandleEntryHash((entryId) => {
+  const entry = field.entries.find((e) => e.id === entryId);
+  return entry ? { entry, field } : null;
+});
 
 codexCloudInit(() => {
   db = codexLoadDB();
@@ -250,4 +277,5 @@ codexCloudInit(() => {
   renderEntries();
   renderStat();
   renderHourDist();
+  codexRenderSidebar('hours');
 });

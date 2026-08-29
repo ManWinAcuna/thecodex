@@ -8,14 +8,18 @@ let db = codexLoadDB();
 function renderHourFields() {
   const grid = document.getElementById('hourFieldsGrid');
   if (!db.hourFields.length) {
-    grid.innerHTML = '<div class="status-line">No hour categories yet. Add one above.</div>';
+    grid.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">&#9202;</div>
+      <div class="empty-state-title">No hour categories yet</div>
+      <div class="empty-state-sub">A category groups people by exact birth (and optional death) time - add one above, then mass-upload names with clock times to start studying which hours cluster.</div>
+    </div>`;
     return;
   }
   grid.innerHTML = db.hourFields.map((f) => {
     const deaths = f.entries.filter((e) => e.deathDate && e.deathTime).length;
-    return `<a class="field-tile" href="hour-field.html?id=${f.id}">
-      <div class="field-tile-name">${codexEscape(f.name)}</div>
-      <div class="field-tile-meta"><span>${f.entries.length} people</span><span class="field-kind-chip">${deaths} deaths</span></div>
+    return `<a class="data-card cx-reveal" href="hour-field.html?id=${f.id}">
+      <div class="data-card-name">${codexEscape(f.name)}</div>
+      <div class="data-card-meta"><span>${f.entries.length} people</span><span class="field-kind-chip">${deaths} deaths</span></div>
     </a>`;
   }).join('');
 }
@@ -33,9 +37,10 @@ document.getElementById('addHourFieldBtn').addEventListener('click', () => {
   input.value = '';
   renderHourFields();
   renderStat();
+  codexRenderSidebar('hours');
 });
 
-let hourDistMode = 'exp';
+let hourDistMode = codexRecall('hoursHome_mode', 'exp');
 
 function renderStat() {
   const out = document.getElementById('statResults');
@@ -51,10 +56,11 @@ function renderHourDist() {
   codexWireHourBars(out, items);
 }
 
-document.getElementById('hourDistDim').addEventListener('change', renderHourDist);
+document.getElementById('hourDistDim').addEventListener('change', () => { codexRemember('hoursHome_dim', document.getElementById('hourDistDim').value); renderHourDist(); });
 document.querySelectorAll('.mode-btn[data-group="hdist"]').forEach((btn) => {
   btn.addEventListener('click', () => {
     hourDistMode = btn.dataset.mode;
+    codexRemember('hoursHome_mode', hourDistMode);
     document.querySelectorAll('.mode-btn[data-group="hdist"]').forEach((b) => b.classList.toggle('active', b === btn));
     renderHourDist();
   });
@@ -62,14 +68,16 @@ document.querySelectorAll('.mode-btn[data-group="hdist"]').forEach((btn) => {
 
 codexWireCollapsible('statToggle', 'statBody', 'statChevron');
 codexWireCollapsible('distToggle', 'distBody', 'distChevron');
-document.getElementById('hourDistDim').innerHTML = codexHourDimensionOptionsHtml('deathHour');
+document.getElementById('hourDistDim').innerHTML = codexHourDimensionOptionsHtml(codexRecall('hoursHome_dim', 'deathHour'));
 renderHourFields();
 renderStat();
 renderHourDist();
+codexShellInit('hours');
 
 codexCloudInit(() => {
   db = codexLoadDB();
   renderHourFields();
   renderStat();
   renderHourDist();
+  codexRenderSidebar('hours');
 });

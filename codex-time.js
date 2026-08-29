@@ -55,7 +55,8 @@ function tcBuild(startYear, endYear) {
   const track = document.getElementById('tcTrack');
   const fill = document.getElementById('tcFill');
   track.hidden = false;
-  tcSetStatus('Running the engines over every date in the era.');
+  tcSetStatus(`Scanning ${startYear}...`);
+  document.getElementById('tcResults').innerHTML = codexSkeletonRowsHtml(6);
 
   const dims = {};
   const decadeDims = {};
@@ -67,11 +68,13 @@ function tcBuild(startYear, endYear) {
   const cursor = new Date(start.getTime());
   let done = 0;
 
+  let lastDecade = `${Math.floor(startYear / 10) * 10}s`;
   function slice() {
     const sliceEnd = Math.min(done + TC_SLICE_DAYS, totalDays);
     while (done < sliceEnd) {
       const y = cursor.getFullYear();
       const decade = `${Math.floor(y / 10) * 10}s`;
+      lastDecade = decade;
       const dateStr = `${y}-${pad2(cursor.getMonth() + 1)}-${pad2(cursor.getDate())}`;
       const codes = codexComputeCodes(dateStr);
       decadeTotals[decade] = (decadeTotals[decade] || 0) + 1;
@@ -87,6 +90,7 @@ function tcBuild(startYear, endYear) {
       done++;
     }
     fill.style.width = Math.round((done / totalDays) * 100) + '%';
+    tcSetStatus(`Scanning ${lastDecade}...`);
     if (done < totalDays) { setTimeout(slice, 0); return; }
 
     const decadeOrder = Object.keys(decadeTotals).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
@@ -173,13 +177,14 @@ function tcRenderHeat() {
       const intensity = maxPct > 0 ? pct / maxPct : 0;
       const bg = `color-mix(in srgb, var(--gold) ${Math.round(intensity * 100)}%, var(--panel-2))`;
       const textCls = intensity > 0.4 ? 'color:#000;' : 'color:var(--muted);';
-      return `<td><div class="heatmap-cell" style="background:${bg};${textCls}" title="${codexEscape(k)} in ${d}: ${(pct * 100).toFixed(1)}%">${pct > 0 ? (pct * 100).toFixed(0) : ''}</div></td>`;
+      return `<td><div class="heatmap-cell" style="background:${bg};${textCls}" data-tip="${codexEscape(k)} in ${d}: ${(pct * 100).toFixed(1)}%">${pct > 0 ? (pct * 100).toFixed(0) : ''}</div></td>`;
     }).join('');
     return `<tr><td class="heatmap-row-label">${d}</td>${cells}</tr>`;
   }).join('');
 
   document.getElementById('heatStatus').textContent = `${decades.length} decades &middot; darkest = 0%, brightest = ${(maxPct * 100).toFixed(1)}%`.replace('&middot;', '·');
   out.innerHTML = `<table class="heatmap-table"><thead>${header}</thead><tbody>${rows}</tbody></table>`;
+  codexWireTooltips(out);
 }
 
 /* --------------------------------------------------------------- wire --- */
@@ -212,7 +217,10 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
     document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b === btn));
     document.getElementById('tab-props').hidden = btn.dataset.tab !== 'props';
     document.getElementById('tab-heat').hidden = btn.dataset.tab !== 'heat';
-    if (btn.dataset.tab === 'heat') tcRenderHeat();
+    if (btn.dataset.tab === 'heat') {
+      tcRenderHeat();
+      codexHint('heatmap', document.getElementById('tab-heat').querySelector('.box-label'), 'Rows are decades, columns are the picked dimension\'s values - brighter cell = a bigger share of that decade.');
+    }
   });
 });
 

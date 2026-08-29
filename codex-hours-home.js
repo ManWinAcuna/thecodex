@@ -29,11 +29,12 @@ document.getElementById('addHourFieldBtn').addEventListener('click', () => {
   const name = input.value.trim();
   if (!name) return;
   if (db.hourFields.some((f) => f.name.toLowerCase() === name.toLowerCase())) {
-    alert('A category with that name already exists.');
+    codexToast('A category with that name already exists.', { kind: 'danger' });
     return;
   }
   db.hourFields.push({ id: codexUid(), name, entries: [] });
   codexSaveDB(db);
+  codexToast(`Added category: ${name}`, { kind: 'success' });
   input.value = '';
   renderHourFields();
   renderStat();

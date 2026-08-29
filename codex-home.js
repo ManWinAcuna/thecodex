@@ -40,11 +40,12 @@ document.getElementById('addFieldBtn').addEventListener('click', () => {
   const name = input.value.trim();
   if (!name) return;
   if (db.fields.some((f) => f.name.toLowerCase() === name.toLowerCase())) {
-    alert('A field with that name already exists.');
+    codexToast('A field with that name already exists.', { kind: 'danger' });
     return;
   }
   db.fields.push({ id: codexUid(), name, kind: document.getElementById('newFieldKind').value, entries: [] });
   codexSaveDB(db);
+  codexToast(`Added field: ${name}`, { kind: 'success' });
   input.value = '';
   renderFields();
   renderScopeSelect();
@@ -92,9 +93,10 @@ document.getElementById('buildBaselineBtn').addEventListener('click', () => {
   const status = document.getElementById('baselineStatus');
   wrap.hidden = false;
   document.getElementById('buildBaselineBtn').disabled = true;
-  status.textContent = 'Running the engines over every date in the range. One-time job.';
+  status.textContent = `Scanning ${CODEX_BASELINE_START_YEAR}...`;
+  document.getElementById('labResults').innerHTML = codexSkeletonRowsHtml(6);
   codexBuildBaseline(
-    (pct) => { fill.style.width = pct + '%'; },
+    (pct, year) => { fill.style.width = pct + '%'; if (year) status.textContent = `Scanning ${Math.floor(year / 10) * 10}s...`; },
     () => {
       wrap.hidden = true;
       refreshBaselineChip();
@@ -104,6 +106,7 @@ document.getElementById('buildBaselineBtn').addEventListener('click', () => {
       // frozen at whatever was available before the build ever ran, even
       // though the baseline (and its ratios) are now current.
       renderReverseFilters();
+      codexToast('True baseline ready. Every ratio site-wide is now honest math.', { kind: 'success', duration: 5000 });
     }
   );
 });
@@ -204,7 +207,7 @@ document.getElementById('crossRunBtn').addEventListener('click', () => {
 
 /* ------------------------------------------------------ backup buttons --- */
 
-document.getElementById('exportBtn').addEventListener('click', () => codexExportBackup(db));
+document.getElementById('exportBtn').addEventListener('click', () => { codexExportBackup(db); codexToast('Backup downloaded.', { kind: 'success' }); });
 document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
 document.getElementById('importFile').addEventListener('change', (ev) => {
   const file = ev.target.files[0];

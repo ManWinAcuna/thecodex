@@ -82,7 +82,7 @@ function codexVerdictCardHtml(value, caption) {
 /* The plain "how many am I looking at" line every distribution box leads
    with, ahead of the verdict card - the raw scope size, spelled out. */
 function codexTotalLineHtml(n, noun) {
-  return `<div class="scope-total"><strong>${n.toLocaleString()}</strong> ${noun}</div>`;
+  return `<div class="scope-total" title="${n.toLocaleString()}"><strong>${codexAbbrevNum(n)}</strong> ${noun}</div>`;
 }
 
 /* Numbered pages of 30, EMAX-style: 5-page window with first/last shortcuts.
@@ -139,6 +139,9 @@ function codexLeaderboardHtml(scoped, dimId, mode, restItems, opts) {
 
 /* Wire expand-on-tap + entry chip popups inside a rendered leaderboard. */
 function codexWireLeaderboard(container, resolveItem) {
+  codexWireTooltips(container);
+  const wheel = container.querySelector('.animal-wheel-wrap');
+  if (wheel) codexHint('wheel', wheel, 'Each wedge is one of the 12 animals - hover any slice or legend row for the exact count.');
   container.querySelectorAll('.bar-row').forEach((row) => {
     row.addEventListener('click', (ev) => {
       if (ev.target.closest('.entry-chip')) return;

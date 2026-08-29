@@ -18,13 +18,58 @@
   --border-strong: rgba(255, 255, 255, .16);
   --text: #ece7dc;
   --muted: #77705f;
-  --bad: #d24a5c;
-  --good: #3fce9f;
   --display: 'Cinzel', 'Times New Roman', serif;
   --ui: -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* ---------------------------------------------------- semantic colors --
+     One real meaning each, used the same way everywhere: success = a thing
+     worked, danger = destructive/wrong, warning = needs attention but not
+     broken, info = neutral heads-up. --good/--bad kept as aliases so
+     nothing existing breaks. */
+  --success: #3fce9f;
+  --success-ghost: rgba(63, 206, 159, .12);
+  --danger: #d24a5c;
+  --danger-ghost: rgba(210, 74, 92, .12);
+  --warning: #e0a03f;
+  --warning-ghost: rgba(224, 160, 63, .12);
+  --info: #6fa8dc;
+  --info-ghost: rgba(111, 168, 220, .12);
+  --good: var(--success);
+  --bad: var(--danger);
+
+  /* -------------------------------------------------------- type scale --
+     By role, not by component - pick the role, not a pixel value. */
+  --fs-xs: 11px;    /* fine print, badges */
+  --fs-sm: 12.5px;  /* labels, meta */
+  --fs-base: 15px;  /* body */
+  --fs-md: 16px;    /* card/section titles */
+  --fs-lg: 19px;    /* sub-headers */
+  --fs-xl: 26px;    /* stat values */
+  --fs-2xl: 34px;   /* verdict numerals */
+  --fs-hero: 46px;  /* dashboard headline */
+
+  /* ------------------------------------------------------ spacing scale --
+     4px base. Use these instead of one-off inline margin/padding values. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-12: 48px;
 }
 
 * { box-sizing: border-box; }
+
+/* One focus treatment, everywhere - buttons, inputs, links, table rows,
+   chips. Keyboard-only (:focus-visible) so mouse clicks stay silent. */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgba(245, 197, 66, .16);
+  border-radius: 4px;
+}
 
 html, body {
   margin: 0;

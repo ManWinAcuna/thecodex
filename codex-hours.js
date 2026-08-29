@@ -326,6 +326,9 @@ function codexHourDistributionHtml(items, dimId, mode, showField) {
 /* Same expand-and-chip wiring as the main wing's leaderboard, but chips
    open the HOUR detail popup. */
 function codexWireHourBars(container, items) {
+  codexWireTooltips(container);
+  const wheel = container.querySelector('.animal-wheel-wrap');
+  if (wheel) codexHint('wheel', wheel, 'Each wedge is one of the 12 animals - hover any slice or legend row for the exact count.');
   container.querySelectorAll('.bar-row').forEach((row) => {
     row.addEventListener('click', (ev) => {
       if (ev.target.closest('.entry-chip')) return;

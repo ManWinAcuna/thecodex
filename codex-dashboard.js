@@ -79,15 +79,107 @@ function renderStats() {
     { v: deaths, l: 'Deaths recorded' },
   ];
   document.getElementById('dashStats').innerHTML = tiles.map((t) =>
-    `<div class="dash-stat-card cx-reveal"><div class="dash-stat-value">${t.v.toLocaleString()}</div><div class="dash-stat-label">${t.l}</div></div>`
+    `<div class="dash-stat-card cx-reveal" title="${t.v.toLocaleString()}"><div class="dash-stat-value">${codexAbbrevNum(t.v)}</div><div class="dash-stat-label">${t.l}</div></div>`
   ).join('');
   document.getElementById('dashFieldsMeta').textContent = `${db.fields.length} fields, ${entries.toLocaleString()} entries`;
   document.getElementById('dashHoursMeta').textContent = `${(db.hourFields || []).length} categories, ${hourEntries.length} people`;
 }
 
+/* --------------------------------------------------- ambient background --
+   A slow-drifting field of points, one per real entry in the database
+   (sampled if there are a lot), positioned by a deterministic hash of the
+   entry's own id so the same point lands in the same spot every visit -
+   not randomly reshuffling. Entries that belong to the hero's hot field+
+   dimension+value glow gold and drift slightly faster; everything else is
+   a faint, calm gray. Pauses entirely under prefers-reduced-motion. */
+function codexHashSeed(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0) / 4294967295;
+}
+
+function codexInitAmbientBackground(db, hot) {
+  const canvas = document.createElement('canvas');
+  canvas.id = 'dashAmbient';
+  canvas.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+
+  const hotIds = new Set();
+  if (hot.hits.length) {
+    const top = hot.hits[0];
+    const scoped = top.field.entries.map((e) => ({ entry: e, field: top.field }));
+    const matching = codexCountsFor(scoped, top.dim.id).get(top.key) || [];
+    matching.forEach((it) => hotIds.add(it.entry.id));
+  }
+
+  const allEntries = codexAllEntries(db).map((it) => it.entry.id)
+    .concat(((typeof codexAllHourEntries === 'function') ? codexAllHourEntries(db) : []).map((it) => it.entry.id));
+  const CAP = 160;
+  const sampled = allEntries.length <= CAP ? allEntries
+    : allEntries.filter((id) => codexHashSeed(id) < CAP / allEntries.length);
+
+  let w = 0; let h = 0;
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const stars = sampled.map((id) => {
+    const a = codexHashSeed(id + 'x');
+    const b = codexHashSeed(id + 'y');
+    const va = codexHashSeed(id + 'vx') - 0.5;
+    const vb = codexHashSeed(id + 'vy') - 0.5;
+    const isHot = hotIds.has(id);
+    return {
+      x: a, y: b,
+      vx: va * (isHot ? 0.00028 : 0.00012),
+      vy: vb * (isHot ? 0.00028 : 0.00012),
+      r: isHot ? 2.4 : 1.2,
+      hot: isHot,
+    };
+  });
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    stars.forEach((s) => {
+      const px = s.x * w; const py = s.y * h;
+      if (s.hot) {
+        const grad = ctx.createRadialGradient(px, py, 0, px, py, 10);
+        grad.addColorStop(0, 'rgba(245,197,66,.55)');
+        grad.addColorStop(1, 'rgba(245,197,66,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(px - 10, py - 10, 20, 20);
+      }
+      ctx.beginPath();
+      ctx.arc(px, py, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = s.hot ? 'rgba(245,197,66,.85)' : 'rgba(236,231,220,.35)';
+      ctx.fill();
+    });
+  }
+
+  if (reduceMotion) { draw(); return; }
+
+  function tick() {
+    stars.forEach((s) => {
+      s.x += s.vx; s.y += s.vy;
+      if (s.x < -0.02) s.x = 1.02; if (s.x > 1.02) s.x = -0.02;
+      if (s.y < -0.02) s.y = 1.02; if (s.y > 1.02) s.y = -0.02;
+    });
+    draw();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
 const hot = codexComputeGlobalHot(1);
 renderHero(hot);
 renderStats();
+codexInitAmbientBackground(db, hot);
 codexShellInit('dashboard');
 
 codexCloudInit(() => {

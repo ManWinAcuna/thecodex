@@ -61,6 +61,7 @@ document.getElementById('hAddBtn').addEventListener('click', () => {
   if (hourFieldHasName(name)) { setAddStatus(`${name} is already in this category.`, 'err'); return; }
   addHourEntry({ name, birthDate, birthTime, deathDate: deathDate || null, deathTime: deathTime || null });
   setAddStatus(`Added ${name}.`, 'ok');
+  codexToast(`Added ${name}`, { kind: 'success' });
   ['hName', 'hBirthDate', 'hBirthTime', 'hDeathDate', 'hDeathTime'].forEach((id) => { document.getElementById(id).value = ''; });
   renderEntries();
   renderStat();
@@ -83,6 +84,7 @@ document.getElementById('importRunBtn').addEventListener('click', () => {
   });
   document.getElementById('importStatus').textContent = `Done: ${added} added, ${fails.length} rejected.`;
   document.getElementById('importFails').innerHTML = fails.map((f) => `<li>${codexEscape(f)}</li>`).join('');
+  codexToast(`Import done: ${added} added, ${fails.length} rejected`, { kind: fails.length ? 'info' : 'success', duration: 4500 });
   if (added) document.getElementById('importText').value = '';
   renderEntries();
   renderStat();
@@ -209,14 +211,26 @@ function renderEntries() {
     });
   });
   document.querySelectorAll('.row-del').forEach((btn) => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
       const entry = field.entries.find((e) => e.id === btn.dataset.del);
       if (!entry) return;
-      if (!confirm(`Delete ${entry.name} from ${field.name}?`)) return;
-      field.entries = field.entries.filter((e) => e.id !== entry.id);
+      const idx = field.entries.indexOf(entry);
+      field.entries.splice(idx, 1);
       codexSaveDB(db);
       renderEntries();
       renderStat();
+      renderHourDist();
+      codexToast(`Deleted ${entry.name}`, {
+        kind: 'danger', duration: 6000, actionLabel: 'Undo',
+        onAction: () => {
+          field.entries.splice(idx, 0, entry);
+          codexSaveDB(db);
+          renderEntries();
+          renderStat();
+          renderHourDist();
+        },
+      });
     });
   });
 }
@@ -235,16 +249,19 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
 
 /* ------------------------------------------------- rename / delete ------ */
 
-document.getElementById('renameFieldBtn').addEventListener('click', () => {
-  const name = prompt('New category name:', field.name);
-  if (!name || !name.trim()) return;
-  field.name = name.trim();
+document.getElementById('renameFieldBtn').addEventListener('click', async () => {
+  const name = await codexPromptText('New category name:', field.name);
+  if (!name) return;
+  field.name = name;
   codexSaveDB(db);
   renderTitle();
+  codexRenderSidebar('hours');
+  codexToast('Category renamed.', { kind: 'success' });
 });
 
-document.getElementById('deleteFieldBtn').addEventListener('click', () => {
-  if (!confirm(`Delete the whole ${field.name} category (${field.entries.length} people)? Export a backup first if unsure.`)) return;
+document.getElementById('deleteFieldBtn').addEventListener('click', async () => {
+  const ok = await codexConfirm(`Delete the whole ${field.name} category (${field.entries.length} people)? Export a backup first if unsure.`, { title: 'Delete category?', okLabel: 'Delete', danger: true });
+  if (!ok) return;
   db.hourFields = db.hourFields.filter((f) => f.id !== field.id);
   codexSaveDB(db);
   location.href = 'hours.html';

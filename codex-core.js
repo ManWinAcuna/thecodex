@@ -57,7 +57,7 @@ function codexSaveDB(db) {
   try {
     localStorage.setItem(CODEX_DB_KEY, JSON.stringify(db));
   } catch (e) {
-    alert('Storage full - export a backup and clear something.');
+    codexToast('Storage full - export a backup and clear something.', { kind: 'danger', duration: 0 });
   }
   if (typeof codexCloudQueuePush === 'function') codexCloudQueuePush();
 }
@@ -140,18 +140,20 @@ function codexExportBackup(db) {
 
 function codexImportBackup(file, onDone) {
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const data = JSON.parse(reader.result);
       if (!data || !Array.isArray(data.fields)) throw new Error('bad shape');
       const entryCount = data.fields.reduce((n, f) => n + (f.entries ? f.entries.length : 0), 0);
-      if (!confirm(`Replace the current database with this backup? (${data.fields.length} fields, ${entryCount} entries)`)) return;
+      const ok = await codexConfirm(`Replace the current database with this backup? (${data.fields.length} fields, ${entryCount} entries)`, { title: 'Replace database?', okLabel: 'Replace', danger: true });
+      if (!ok) return;
       if (!Array.isArray(data.seenSeeds)) data.seenSeeds = [];
       if (!Array.isArray(data.hourFields)) data.hourFields = [];
       codexSaveDB(data);
+      codexToast('Backup restored.', { kind: 'success' });
       onDone(data);
     } catch (e) {
-      alert('Not a valid Codex backup file.');
+      codexToast('Not a valid Codex backup file.', { kind: 'danger' });
     }
   };
   reader.readAsText(file);

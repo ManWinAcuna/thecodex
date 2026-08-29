@@ -31,7 +31,7 @@ function codexLoadBaseline() {
 }
 
 /* Chunked build so the page never freezes: ~120 days per slice, yielding to
-   the event loop between slices. onProgress(pct), onDone(baseline). */
+   the event loop between slices. onProgress(pct, currentYear), onDone(baseline). */
 function codexBuildBaseline(onProgress, onDone) {
   const dims = {};
   CODEX_DIMENSIONS.forEach((d) => { dims[d.id] = {}; });
@@ -41,6 +41,7 @@ function codexBuildBaseline(onProgress, onDone) {
   let done = 0;
   const cursor = new Date(start.getTime());
 
+  let lastYear = null;
   function slice() {
     const sliceEnd = Math.min(done + 120, totalDays);
     while (done < sliceEnd) {
@@ -54,13 +55,14 @@ function codexBuildBaseline(onProgress, onDone) {
         if (key == null) return;
         dims[dim.id][key] = (dims[dim.id][key] || 0) + 1;
       });
+      lastYear = y;
       cursor.setDate(cursor.getDate() + 1);
       done++;
     }
     // The per-date cache would balloon to 40k entries during a build -
     // keep it from eating memory for dates nothing will ask about again.
     if (codexCodesCache.size > 5000) codexCodesCache.clear();
-    if (onProgress) onProgress(Math.round((done / totalDays) * 100));
+    if (onProgress) onProgress(Math.round((done / totalDays) * 100), lastYear);
     if (done < totalDays) { setTimeout(slice, 0); return; }
     codexBaseline = { totalDays, dims };
     try { localStorage.setItem(CODEX_BASELINE_KEY, JSON.stringify(codexBaseline)); } catch (e) { /* still usable in-memory */ }

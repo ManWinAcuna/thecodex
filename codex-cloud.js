@@ -45,7 +45,7 @@ async function codexCloudInit(onRemoteReplace) {
 
   firebase.auth().onAuthStateChanged(async (user) => {
     if (user && user.email !== CODEX_OWNER_EMAIL) {
-      alert('This database is owner-locked.');
+      codexToast('This database is owner-locked.', { kind: 'danger', duration: 5000 });
       firebase.auth().signOut();
       return;
     }

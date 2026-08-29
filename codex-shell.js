@@ -6,6 +6,18 @@
    codexShellInit('<page-key>') once the page's own data (db) exists.
    ========================================================================== */
 
+/* -------------------------------------------------------- number format --- */
+/* Large counts (day totals especially) get abbreviated in tight spaces -
+   stat tiles, chips, bar meta. Anything under 10,000 stays exact (nothing
+   in this app is dense enough below that to need shortening); the exact
+   figure is always still available via toLocaleString() at the point of
+   use where precision actually matters (tooltips, detail views). */
+function codexAbbrevNum(n) {
+  if (n < 10000) return n.toLocaleString();
+  if (n < 1000000) return (n / 1000).toFixed(n < 100000 ? 1 : 0) + 'K';
+  return (n / 1000000).toFixed(1) + 'M';
+}
+
 /* --------------------------------------------------------- persistence --- */
 /* Single owner, single browser - safe to just remember everything under one
    namespaced key per box, restored on load. */
@@ -109,10 +121,10 @@ function codexAnimalWheelHtml(rows) {
     return { path, fill, lx, ly, name, pct, count };
   });
 
-  const wedgesSvg = segs.map((s) => `<path d="${s.path}" fill="${s.fill}" stroke="var(--border)" stroke-width="1"><title>${codexEscape(s.name)}: ${s.count} (${(s.pct * 100).toFixed(1)}%)</title></path>`).join('');
+  const wedgesSvg = segs.map((s) => `<path d="${s.path}" fill="${s.fill}" stroke="var(--border)" stroke-width="1" data-tip="${codexEscape(s.name)}: ${s.count} (${(s.pct * 100).toFixed(1)}%)"></path>`).join('');
   const labelsSvg = segs.map((s) => `<text x="${s.lx.toFixed(1)}" y="${s.ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="16" style="pointer-events:none;">${codexAnimalEmoji(s.name)}</text>`).join('');
   const legend = segs.map((s) =>
-    `<div class="awl-row"><span class="awl-swatch" style="background:${s.fill}"></span><span class="awl-name">${codexAnimalLabel(s.name)}</span><span class="awl-pct">${s.count} &middot; ${(s.pct * 100).toFixed(1)}%</span></div>`
+    `<div class="awl-row" data-tip="${codexEscape(s.name)}: ${s.count} (${(s.pct * 100).toFixed(1)}%)"><span class="awl-swatch" style="background:${s.fill}"></span><span class="awl-name">${codexAnimalLabel(s.name)}</span><span class="awl-pct">${s.count} &middot; ${(s.pct * 100).toFixed(1)}%</span></div>`
   ).join('');
 
   return `<div class="animal-wheel-wrap">
@@ -122,12 +134,15 @@ function codexAnimalWheelHtml(rows) {
 }
 
 /* ------------------------------------------------------------- sidebar --- */
+/* One icon language, app-wide: plain emoji, chosen so no two nav items
+   read as the same concept (Hour Studies is a clock face, Time Codex is
+   an hourglass - close cousins but visually distinct at a glance). */
 const CODEX_NAV_ITEMS = [
-  { key: 'dashboard', href: 'index.html', icon: '♦', label: 'Dashboard' },
-  { key: 'fields', href: 'fields.html', icon: '\u{1F5C2}', label: 'Fields' },
-  { key: 'hours', href: 'hours.html', icon: '⏲', label: 'Hour Studies' },
+  { key: 'dashboard', href: 'index.html', icon: '\u{1F3E0}', label: 'Dashboard' },
+  { key: 'fields', href: 'fields.html', icon: '\u{1F5C2}️', label: 'Fields' },
+  { key: 'hours', href: 'hours.html', icon: '\u{1F550}', label: 'Hour Studies' },
   { key: 'time', href: 'time-codex.html', icon: '⌛', label: 'Time Codex' },
-  { key: 'compare', href: 'compare.html', icon: '⚖', label: 'Compare' },
+  { key: 'compare', href: 'compare.html', icon: '⚖️', label: 'Compare' },
 ];
 
 function codexBuildSidebarHtml(activeKey, db) {
@@ -180,6 +195,7 @@ function codexRenderSidebar(activeKey) {
     codexRemember('sidebarCollapsed', now);
   });
   document.getElementById('shellSearchTrigger').addEventListener('click', codexOpenGlobalSearch);
+  codexHint('search', document.getElementById('shellSearchTrigger'), 'Tip: Ctrl+K searches every person, field, and category instantly, from anywhere.');
 }
 
 /* -------------------------------------------------------- global search --- */
@@ -271,6 +287,186 @@ function codexSearchKeyNav(ev) {
   }
 }
 
+/* -------------------------------------------------------------- toasts --- */
+/* codexToast(message, opts): opts = { kind: 'success'|'danger'|'info',
+   duration: ms (0 = stays until dismissed), actionLabel, onAction }.
+   Returns the toast element so a caller can dismiss it early (used by the
+   undo flow). Stacks bottom-right, newest on top. */
+function codexToastHost() {
+  let host = document.getElementById('toastHost');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'toastHost';
+    host.className = 'toast-host';
+    document.body.appendChild(host);
+  }
+  return host;
+}
+
+function codexToast(message, opts) {
+  const o = opts || {};
+  const kind = o.kind || 'info';
+  const host = codexToastHost();
+  const el = document.createElement('div');
+  el.className = `toast toast-${kind}`;
+  el.innerHTML = `
+    <span class="toast-msg">${codexEscape(message)}</span>
+    ${o.actionLabel ? `<button class="toast-action" type="button">${codexEscape(o.actionLabel)}</button>` : ''}
+    <button class="toast-close" type="button" aria-label="Dismiss">&times;</button>
+  `;
+  host.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('in'));
+
+  const dismiss = () => {
+    el.classList.remove('in');
+    setTimeout(() => el.remove(), 200);
+  };
+  el.querySelector('.toast-close').addEventListener('click', dismiss);
+  if (o.actionLabel) {
+    el.querySelector('.toast-action').addEventListener('click', () => {
+      if (o.onAction) o.onAction();
+      dismiss();
+    });
+  }
+  const duration = o.duration != null ? o.duration : 3200;
+  if (duration > 0) setTimeout(dismiss, duration);
+  el._dismiss = dismiss;
+  return el;
+}
+
+/* ------------------------------------------------------- confirm modal --- */
+/* Promise-based replacements for window.confirm/window.prompt, styled to
+   match instead of popping a plain OS dialog. Only one at a time - a
+   second call while one is open queues behind it via the returned promise
+   chain naturally (each call awaits the DOM being clear). */
+function codexConfirmHost() {
+  let host = document.getElementById('confirmOverlay');
+  if (!host) {
+    host = document.createElement('div');
+    host.className = 'modal-overlay confirm-overlay';
+    host.id = 'confirmOverlay';
+    host.innerHTML = `
+      <div class="modal-box confirm-box">
+        <div class="confirm-title" id="confirmTitle"></div>
+        <div class="confirm-body" id="confirmBody"></div>
+        <input type="text" id="confirmInput" hidden>
+        <div class="confirm-actions">
+          <button class="btn-link" id="confirmCancel" type="button">Cancel</button>
+          <button class="btn" id="confirmOk" type="button">OK</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(host);
+    host.addEventListener('click', (ev) => { if (ev.target === host) host.querySelector('#confirmCancel').click(); });
+  }
+  return host;
+}
+
+function codexConfirm(message, opts) {
+  const o = opts || {};
+  return new Promise((resolve) => {
+    const host = codexConfirmHost();
+    host.querySelector('#confirmTitle').textContent = o.title || 'Are you sure?';
+    host.querySelector('#confirmBody').textContent = message;
+    host.querySelector('#confirmInput').hidden = true;
+    const okBtn = host.querySelector('#confirmOk');
+    okBtn.textContent = o.okLabel || 'Confirm';
+    okBtn.className = o.danger ? 'btn btn-danger-solid' : 'btn';
+    host.classList.add('open');
+
+    const cleanup = (result) => {
+      host.classList.remove('open');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      resolve(result);
+    };
+    const onOk = () => cleanup(true);
+    const onCancel = () => cleanup(false);
+    const cancelBtn = host.querySelector('#confirmCancel');
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    setTimeout(() => okBtn.focus(), 30);
+  });
+}
+
+function codexPromptText(message, defaultValue) {
+  return new Promise((resolve) => {
+    const host = codexConfirmHost();
+    host.querySelector('#confirmTitle').textContent = message;
+    host.querySelector('#confirmBody').textContent = '';
+    const input = host.querySelector('#confirmInput');
+    input.hidden = false;
+    input.value = defaultValue || '';
+    const okBtn = host.querySelector('#confirmOk');
+    okBtn.textContent = 'Save';
+    okBtn.className = 'btn';
+    host.classList.add('open');
+
+    const cleanup = (result) => {
+      host.classList.remove('open');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      input.removeEventListener('keydown', onKey);
+      resolve(result);
+    };
+    const onOk = () => cleanup(input.value.trim() || null);
+    const onCancel = () => cleanup(null);
+    const onKey = (ev) => { if (ev.key === 'Enter') onOk(); };
+    const cancelBtn = host.querySelector('#confirmCancel');
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    input.addEventListener('keydown', onKey);
+    setTimeout(() => { input.focus(); input.select(); }, 30);
+  });
+}
+
+/* ------------------------------------------------------------ tooltip --- */
+/* Hover-follows-cursor tooltip for chart elements (animal wheel wedges,
+   heatmap cells) instead of the browser's plain title="" box. Call once
+   per container; delegates to any descendant with data-tip. */
+function codexWireTooltips(container) {
+  let tip = document.getElementById('cxTooltip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'cxTooltip';
+    tip.className = 'cx-tooltip';
+    document.body.appendChild(tip);
+  }
+  container.querySelectorAll('[data-tip]').forEach((el) => {
+    el.addEventListener('mouseenter', () => { tip.textContent = el.dataset.tip; tip.classList.add('show'); });
+    el.addEventListener('mousemove', (ev) => {
+      tip.style.left = `${ev.clientX + 14}px`;
+      tip.style.top = `${ev.clientY + 14}px`;
+    });
+    el.addEventListener('mouseleave', () => tip.classList.remove('show'));
+  });
+}
+
+/* ------------------------------------------------------------ hints --- */
+/* One-time dismissible callout near a feature, shown once ever (per id,
+   per browser) then never again. Not a tour - just a single pointer at
+   something easy to miss (Ctrl+K, the animal wheel, the heatmap tab). */
+function codexHint(id, targetEl, message) {
+  if (!targetEl || codexRecall(`hint_seen_${id}`, false)) return;
+  const rect = targetEl.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'cx-hint';
+  el.style.top = `${rect.bottom + window.scrollY + 10}px`;
+  el.style.left = `${Math.max(10, rect.left + window.scrollX - 10)}px`;
+  el.innerHTML = `<button class="cx-hint-close" type="button" aria-label="Dismiss">&times;</button>${codexEscape(message)}`;
+  document.body.appendChild(el);
+  const dismiss = () => { codexRemember(`hint_seen_${id}`, true); el.remove(); };
+  el.querySelector('.cx-hint-close').addEventListener('click', dismiss);
+  setTimeout(dismiss, 9000);
+}
+
+/* --------------------------------------------------------- skeletons --- */
+function codexSkeletonRowsHtml(n) {
+  return `<div class="bar-rows">${Array.from({ length: n || 5 }, () =>
+    '<div class="bar-row skeleton-row"><div class="skeleton skeleton-key"></div><div class="skeleton skeleton-track"></div><div class="skeleton skeleton-meta"></div></div>'
+  ).join('')}</div>`;
+}
+
 /* ----------------------------------------------------------- shortcuts --- */
 function codexShellShortcuts() {
   document.addEventListener('keydown', (ev) => {
@@ -285,6 +481,8 @@ function codexShellShortcuts() {
     if (ev.key === 'Escape') {
       const gsearch = document.getElementById('gsearchOverlay');
       if (gsearch && gsearch.classList.contains('open')) { codexCloseGlobalSearch(); return; }
+      const confirmOverlay = document.getElementById('confirmOverlay');
+      if (confirmOverlay && confirmOverlay.classList.contains('open')) { confirmOverlay.querySelector('#confirmCancel').click(); return; }
       const openModal = document.querySelector('.modal-overlay.open');
       if (openModal) { openModal.classList.remove('open'); return; }
       return;

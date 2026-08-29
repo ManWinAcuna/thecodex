@@ -82,6 +82,7 @@ async function runLookup() {
         if (fieldHasName(c.label)) { setAddStatus(`${c.label} is already in this field.`, 'err'); return; }
         addEntryRecord({ name: c.label, date: resolved.date, kind: resolved.kind, title: resolved.title, qid: c.qid });
         setAddStatus(`Added ${c.label} (${resolved.kind} ${resolved.date}).`, 'ok');
+        codexToast(`Added ${c.label}`, { kind: 'success' });
         document.getElementById('lookupName').value = '';
         renderEntries();
         renderDist();
@@ -101,6 +102,7 @@ document.getElementById('manualAddBtn').addEventListener('click', () => {
   if (fieldHasName(name)) { setAddStatus(`${name} is already in this field.`, 'err'); return; }
   addEntryRecord({ name, date, kind: 'manual' });
   setAddStatus(`Added ${name} (${date}).`, 'ok');
+  codexToast(`Added ${name}`, { kind: 'success' });
   document.getElementById('manualName').value = '';
   document.getElementById('manualDate').value = '';
   renderEntries();
@@ -140,6 +142,7 @@ async function runBatch(names, statusEl, trackEl, fillEl, failsEl) {
   trackEl.hidden = true;
   statusEl.textContent = `Done: ${added} added, ${fails.length} missed.`;
   failsEl.innerHTML = fails.map((f) => `<li>${codexEscape(f)}</li>`).join('');
+  codexToast(`Import done: ${added} added, ${fails.length} missed`, { kind: fails.length ? 'info' : 'success', duration: 4500 });
   renderEntries();
   renderDist();
 }
@@ -291,14 +294,24 @@ function renderEntries() {
     });
   });
   document.querySelectorAll('.row-del').forEach((btn) => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
       const entry = field.entries.find((e) => e.id === btn.dataset.del);
       if (!entry) return;
-      if (!confirm(`Delete ${entry.name} from ${field.name}?`)) return;
-      field.entries = field.entries.filter((e) => e.id !== entry.id);
+      const idx = field.entries.indexOf(entry);
+      field.entries.splice(idx, 1);
       codexSaveDB(db);
       renderEntries();
       renderDist();
+      codexToast(`Deleted ${entry.name}`, {
+        kind: 'danger', duration: 6000, actionLabel: 'Undo',
+        onAction: () => {
+          field.entries.splice(idx, 0, entry);
+          codexSaveDB(db);
+          renderEntries();
+          renderDist();
+        },
+      });
     });
   });
 }
@@ -317,16 +330,19 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
 
 /* ------------------------------------------------- rename / delete ------ */
 
-document.getElementById('renameFieldBtn').addEventListener('click', () => {
-  const name = prompt('New field name:', field.name);
-  if (!name || !name.trim()) return;
-  field.name = name.trim();
+document.getElementById('renameFieldBtn').addEventListener('click', async () => {
+  const name = await codexPromptText('New field name:', field.name);
+  if (!name) return;
+  field.name = name;
   codexSaveDB(db);
   renderTitle();
+  codexRenderSidebar('fields');
+  codexToast('Field renamed.', { kind: 'success' });
 });
 
-document.getElementById('deleteFieldBtn').addEventListener('click', () => {
-  if (!confirm(`Delete the whole ${field.name} field (${field.entries.length} entries)? This cannot be undone here. Export a backup first if unsure.`)) return;
+document.getElementById('deleteFieldBtn').addEventListener('click', async () => {
+  const ok = await codexConfirm(`Delete the whole ${field.name} field (${field.entries.length} entries)? This cannot be undone here. Export a backup first if unsure.`, { title: 'Delete field?', okLabel: 'Delete', danger: true });
+  if (!ok) return;
   db.fields = db.fields.filter((f) => f.id !== field.id);
   codexSaveDB(db);
   location.href = 'fields.html';

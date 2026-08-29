@@ -6,7 +6,7 @@
    last 8 ranges kept).
    ========================================================================== */
 
-const TC_CACHE_KEY = 'codex_timecodex_cache_v2'; // v2: Pure 13 dimension added
+const TC_CACHE_KEY = 'codex_timecodex_cache_v3'; // v3: Life Path splits out 13/4
 const TC_MAX_SPAN_YEARS = 300;
 const TC_SLICE_DAYS = 2000;
 

@@ -11,10 +11,10 @@
 
 const CODEX_BASELINE_START_YEAR = 1900;
 const CODEX_BASELINE_END_YEAR = 2009;
-// v3: bumped when the Pure 13 dimension was added, so a baseline cached
-// before it exists (and would silently answer null/HOT for pure13) gets
-// rebuilt instead of served stale.
-const CODEX_BASELINE_KEY = `codex_baseline_v3_${CODEX_BASELINE_START_YEAR}_${CODEX_BASELINE_END_YEAR}`;
+// v4: bumped when the Life Path dimension started splitting out "13/4" as
+// its own bucket (previously lumped into plain "4") - a baseline cached
+// before that split would answer wrong ghost/normal% for both buckets.
+const CODEX_BASELINE_KEY = `codex_baseline_v4_${CODEX_BASELINE_START_YEAR}_${CODEX_BASELINE_END_YEAR}`;
 
 let codexBaseline = null; // { totalDays, dims: { dimId: { key: count } } }
 

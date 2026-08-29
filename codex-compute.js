@@ -55,7 +55,13 @@ function codexNumKeySort(key) {
 }
 
 const CODEX_DIMENSIONS = [
-  { id: 'lp', label: 'Life Path', get: (c) => c.lp, sortKey: codexNumKeySort, numeral: true },
+  // The real engine result for a Pure-13 person is plain "4" - 13 never
+  // survives reduction (unlike 11/22/33, which freeze). This dimension
+  // still splits the karmic path out as its own "13/4" bucket (display-only,
+  // same slash convention as 11/2, 22/4, 33/6) so it's visible directly in
+  // the Life Path spread - c.lp itself (the true engine value, shown in
+  // every table/popup) is untouched.
+  { id: 'lp', label: 'Life Path', get: (c) => (c.pure13 ? '13/4' : c.lp), sortKey: codexNumKeySort, numeral: true },
   { id: 'lpCompound', label: 'LP Compound', get: (c) => String(c.lpCompound), sortKey: codexNumKeySort, numeral: true },
   // Karmic-debt path: the RAW pre-reduction total lands exactly on 13 (which
   // then reduces to 4, same as the compat table's "Karmic 13 borrows 4's

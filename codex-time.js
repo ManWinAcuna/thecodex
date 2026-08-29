@@ -6,7 +6,7 @@
    last 8 ranges kept).
    ========================================================================== */
 
-const TC_CACHE_KEY = 'codex_timecodex_cache_v1';
+const TC_CACHE_KEY = 'codex_timecodex_cache_v2'; // v2: Pure 13 dimension added
 const TC_MAX_SPAN_YEARS = 300;
 const TC_SLICE_DAYS = 2000;
 
@@ -127,7 +127,7 @@ function tcRender() {
   const verdict = codexVerdictCardHtml(codexEscape(top.key),
     `${dim.label} owns the most time in ${tcRangeLabel} &middot; ${(top.pct * 100).toFixed(1)}% (${top.count.toLocaleString()} days)`);
 
-  out.innerHTML = verdict + `<div class="bar-rows">${html}</div>`;
+  out.innerHTML = codexTotalLineHtml(tcData.totalDays, `total days in ${tcRangeLabel}`) + verdict + `<div class="bar-rows">${html}</div>`;
 }
 
 /* --------------------------------------------------------------- wire --- */

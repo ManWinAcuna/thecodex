@@ -474,6 +474,19 @@ option { background: #0d0c0a; }
 }
 .verdict-caption { color: var(--muted); font-size: 13px; }
 
+.scope-total {
+  color: var(--text);
+  font-size: 13px;
+  padding: 2px 4px 10px;
+}
+.scope-total strong {
+  font-family: var(--display);
+  color: var(--gold);
+  font-weight: 700;
+  font-size: 16px;
+  margin-right: 4px;
+}
+
 /* ---------------------------------------------------------------- tabs --- */
 .tab-bar { display: flex; gap: 8px; margin: 2px 0 14px; }
 .tab-btn {

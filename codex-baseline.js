@@ -11,7 +11,10 @@
 
 const CODEX_BASELINE_START_YEAR = 1900;
 const CODEX_BASELINE_END_YEAR = 2009;
-const CODEX_BASELINE_KEY = `codex_baseline_v2_${CODEX_BASELINE_START_YEAR}_${CODEX_BASELINE_END_YEAR}`;
+// v3: bumped when the Pure 13 dimension was added, so a baseline cached
+// before it exists (and would silently answer null/HOT for pure13) gets
+// rebuilt instead of served stale.
+const CODEX_BASELINE_KEY = `codex_baseline_v3_${CODEX_BASELINE_START_YEAR}_${CODEX_BASELINE_END_YEAR}`;
 
 let codexBaseline = null; // { totalDays, dims: { dimId: { key: count } } }
 

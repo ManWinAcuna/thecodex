@@ -79,6 +79,12 @@ function codexVerdictCardHtml(value, caption) {
   return `<div class="verdict-card"><span class="verdict-num">${value}</span><span class="verdict-caption">${caption}</span></div>`;
 }
 
+/* The plain "how many am I looking at" line every distribution box leads
+   with, ahead of the verdict card - the raw scope size, spelled out. */
+function codexTotalLineHtml(n, noun) {
+  return `<div class="scope-total"><strong>${n.toLocaleString()}</strong> ${noun}</div>`;
+}
+
 /* Numbered pages of 30, EMAX-style: 5-page window with first/last shortcuts.
    Caller renders into a container and wires .page-btn clicks. */
 const CODEX_PAGE_SIZE = 30;
@@ -125,7 +131,7 @@ function codexLeaderboardHtml(scoped, dimId, mode, restItems, opts) {
   const note = mode === 'true' && !codexLoadBaseline()
     ? '<div class="status-line err">True baseline not built yet. Build it from the toolbar to unlock the normally markers.</div>'
     : '';
-  return note + verdict + `<div class="bar-rows">${html}</div>`;
+  return note + codexTotalLineHtml(total, 'entries with a usable date in this scope') + verdict + `<div class="bar-rows">${html}</div>`;
 }
 
 /* Wire expand-on-tap + entry chip popups inside a rendered leaderboard. */

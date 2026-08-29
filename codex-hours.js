@@ -195,7 +195,7 @@ function codexDeathHourStudyHtml(items, showField) {
     ? codexVerdictCardHtml(`${(loudest.pct / loudest.expectedPct).toFixed(1)}x`, `${loudest.label} &middot; ${loudest.hits.length} of ${dead.length} deaths, normally ${codexNormallyPct(loudest.expectedPct)}`)
     : '';
 
-  return `<div class="status-line">${dead.length} deaths in scope</div>${verdict}<div class="bar-rows">${rows}</div>`;
+  return codexTotalLineHtml(dead.length, 'deaths in this scope') + verdict + `<div class="bar-rows">${rows}</div>`;
 }
 
 /* ---------------------------------------------- hour distribution bars --- */
@@ -317,7 +317,7 @@ function codexHourDistributionHtml(items, dimId, mode, showField) {
   const top = rows[0];
   const verdict = codexVerdictCardHtml(codexEscape(top.key), `${dim.label} leader &middot; ${top.hits.length} of ${total} (${(top.pct * 100).toFixed(0)}%)`);
 
-  return `<div class="status-line">${total} in scope</div>${verdict}<div class="bar-rows">${html}</div>`;
+  return codexTotalLineHtml(total, 'people carry this dimension in this scope') + verdict + `<div class="bar-rows">${html}</div>`;
 }
 
 /* Same expand-and-chip wiring as the main wing's leaderboard, but chips

@@ -26,6 +26,7 @@ function codexComputeCodes(dateStr) {
     lp: lpb.display,
     lpNum: lpb.result,
     lpCompound: lpb.compound,
+    pure13: lpb.compound === 13,
     dayBorn: rawDay,
     dayNum: reduceNumber(rawDay),
     combo: getCombo(d),
@@ -56,6 +57,12 @@ function codexNumKeySort(key) {
 const CODEX_DIMENSIONS = [
   { id: 'lp', label: 'Life Path', get: (c) => c.lp, sortKey: codexNumKeySort, numeral: true },
   { id: 'lpCompound', label: 'LP Compound', get: (c) => String(c.lpCompound), sortKey: codexNumKeySort, numeral: true },
+  // Karmic-debt path: the RAW pre-reduction total lands exactly on 13 (which
+  // then reduces to 4, same as the compat table's "Karmic 13 borrows 4's
+  // row"). Only ever true/false, so like the imprint dims below it returns
+  // null (not "No") when absent - a boolean dim would otherwise flood every
+  // leaderboard/reverse-lookup with an overwhelming "No" bucket.
+  { id: 'pure13', label: 'Pure 13 (Karmic)', get: (c) => (c.pure13 ? 'Pure 13' : null), sortKey: () => 0, numeral: false },
   { id: 'dayBorn', label: 'Day Born', get: (c) => String(c.dayBorn), sortKey: codexNumKeySort, numeral: true },
   { id: 'dayNum', label: 'Day Number', get: (c) => String(c.dayNum), sortKey: codexNumKeySort, numeral: true },
   { id: 'combo', label: 'Combo', get: (c) => String(c.combo), sortKey: codexNumKeySort, numeral: true },

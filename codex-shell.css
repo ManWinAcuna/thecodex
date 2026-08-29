@@ -13,7 +13,14 @@
 html.shell-ready body {
   display: grid;
   grid-template-columns: var(--shell-sidebar-w) 1fr;
-  grid-template-rows: 100vh;
+  /* No fixed row height here on purpose: a fixed track makes the sidebar's
+     own containing block exactly as tall as the sidebar itself, leaving
+     sticky nowhere to "stick" - it just scrolls off with the page. Leaving
+     the row auto-sized lets it grow to match .page's real height (however
+     long that is), so the sticky sidebar has room to stay pinned for the
+     whole scroll. min-height keeps short pages filling the viewport. */
+  grid-template-rows: auto;
+  min-height: 100vh;
   align-items: start;
 }
 html.shell-ready.shell-collapsed body {

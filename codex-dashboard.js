@@ -1,14 +1,14 @@
 /* ============================================================================
-   THE CODEX - Dashboard: headline hot stat, quick stats, hot-code list,
-   quick links. Read-only overview, no editing here.
+   THE CODEX - Dashboard: headline hot stat, quick stats, quick links.
+   Read-only overview, no editing here.
    ========================================================================== */
 
 const db = codexLoadDB();
 
-/* Scans every field x dimension for values sitting >=1.5x their normal
-   share (true baseline if built, else rest-of-DB), skipping tiny samples
-   (<3 entries) so noise doesn't dominate. One entry per field+dimension
-   (its loudest value only), sorted loudest first. */
+/* Scans every field x dimension for the single loudest value sitting
+   >=1.5x its normal share (true baseline if built, else rest-of-DB),
+   skipping tiny samples (<3 entries) so noise doesn't dominate. Only the
+   hero headline needs this now, so limit is normally 1. */
 function codexComputeGlobalHot(limit) {
   const baselineReady = !!codexLoadBaseline();
   const out = [];
@@ -85,27 +85,9 @@ function renderStats() {
   document.getElementById('dashHoursMeta').textContent = `${(db.hourFields || []).length} categories, ${hourEntries.length} people`;
 }
 
-function renderHotList(hot) {
-  const out = document.getElementById('dashHotList');
-  if (!hot.hits.length) {
-    out.innerHTML = '<div class="status-line">Nothing crosses 1.5x normal yet.</div>';
-    return;
-  }
-  out.innerHTML = hot.hits.map((h) =>
-    `<a class="dash-hot-row cx-reveal" href="field.html?id=${h.field.id}">
-      <span class="dash-hot-tag">${h.ratio.toFixed(1)}x</span>
-      <div class="dash-hot-main">
-        <div class="dash-hot-title">${codexEscape(h.key)} &middot; ${codexEscape(h.dim.label)}</div>
-        <div class="dash-hot-sub">${codexEscape(h.field.name)} &middot; ${h.items.length} of ${h.field.entries.length}</div>
-      </div>
-    </a>`
-  ).join('');
-}
-
-const hot = codexComputeGlobalHot(6);
+const hot = codexComputeGlobalHot(1);
 renderHero(hot);
 renderStats();
-renderHotList(hot);
 codexShellInit('dashboard');
 
 codexCloudInit(() => {

@@ -22,11 +22,20 @@ function codexComputeCodes(dateStr) {
     const found = getFirstDayOfMonthImprint(d, n);
     if (found) imprints[n] = found.lp;
   });
+  // Same day-condition the real engine uses to decide "22" vs "22/4" and
+  // "33" vs "33/6" (lifePathBreakdown, numerology.js - not exposed on its
+  // return value, so re-derived here from the date rather than touching
+  // that file). 13 gets treated as an honorary 4th master number on the
+  // SAME condition as 22/33 (not 11's - 11's own "/2" suffix is narrower,
+  // tied to the day literally being 20, a coincidence unique to how 11
+  // gets pushed into the reduction pool that has no parallel for 13).
+  const isDoubleDigitDay = rawDay > 9 && rawDay !== 11 && rawDay !== 22 && rawDay !== 33;
   const codes = {
     lp: lpb.display,
     lpNum: lpb.result,
     lpCompound: lpb.compound,
     pure13: lpb.compound === 13,
+    pure13Slash: lpb.compound === 13 && isDoubleDigitDay,
     dayBorn: rawDay,
     dayNum: reduceNumber(rawDay),
     combo: getCombo(d),
@@ -57,11 +66,14 @@ function codexNumKeySort(key) {
 const CODEX_DIMENSIONS = [
   // The real engine result for a Pure-13 person is plain "4" - 13 never
   // survives reduction (unlike 11/22/33, which freeze). This dimension
-  // still splits the karmic path out as its own "13/4" bucket (display-only,
-  // same slash convention as 11/2, 22/4, 33/6) so it's visible directly in
-  // the Life Path spread - c.lp itself (the true engine value, shown in
-  // every table/popup) is untouched.
-  { id: 'lp', label: 'Life Path', get: (c) => (c.pure13 ? '13/4' : c.lp), sortKey: codexNumKeySort, numeral: true },
+  // still splits the karmic path out as its own value (display-only,
+  // c.lp itself - the true engine value shown in every table/popup - is
+  // untouched) so it's visible directly in the Life Path spread. Treated
+  // as an honorary 4th master number: plain "13" by default, "13/4" only
+  // under the same day-condition that already governs 22->22/4 and
+  // 33->33/6 (see isDoubleDigitDay above) - most pure-13 people will show
+  // "13/4", same as most 22/33 results do.
+  { id: 'lp', label: 'Life Path', get: (c) => (c.pure13 ? (c.pure13Slash ? '13/4' : '13') : c.lp), sortKey: codexNumKeySort, numeral: true },
   { id: 'lpCompound', label: 'LP Compound', get: (c) => String(c.lpCompound), sortKey: codexNumKeySort, numeral: true },
   // Karmic-debt path: the RAW pre-reduction total lands exactly on 13 (which
   // then reduces to 4, same as the compat table's "Karmic 13 borrows 4's

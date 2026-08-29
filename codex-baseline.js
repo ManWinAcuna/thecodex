@@ -11,10 +11,10 @@
 
 const CODEX_BASELINE_START_YEAR = 1900;
 const CODEX_BASELINE_END_YEAR = 2009;
-// v4: bumped when the Life Path dimension started splitting out "13/4" as
-// its own bucket (previously lumped into plain "4") - a baseline cached
-// before that split would answer wrong ghost/normal% for both buckets.
-const CODEX_BASELINE_KEY = `codex_baseline_v4_${CODEX_BASELINE_START_YEAR}_${CODEX_BASELINE_END_YEAR}`;
+// v5: "13/4" itself split into "13" (plain, honorary-master-number
+// default) vs "13/4" (the day-condition exception) - a baseline cached
+// before this split would still lump every pure-13 person under "13/4".
+const CODEX_BASELINE_KEY = `codex_baseline_v5_${CODEX_BASELINE_START_YEAR}_${CODEX_BASELINE_END_YEAR}`;
 
 let codexBaseline = null; // { totalDays, dims: { dimId: { key: count } } }
 

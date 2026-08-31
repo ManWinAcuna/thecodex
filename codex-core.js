@@ -61,30 +61,8 @@ function codexSaveDB(db) {
   if (typeof codexCloudQueuePush === 'function') codexCloudQueuePush();
 }
 
-/* Seed fields are offered exactly once per browser (seenSeeds tracks the
-   offer itself, kept or deleted), so a deleted field never resurrects -
-   same pattern as EMAX starter seeding. */
-function codexApplySeedFields(db) {
-  if (typeof CODEX_SEED_FIELDS === 'undefined') return false;
-  const existing = new Set(db.fields.map((f) => f.name));
-  let changed = false;
-  CODEX_SEED_FIELDS.forEach((seed) => {
-    if (db.seenSeeds.includes(seed.name) || existing.has(seed.name)) return;
-    db.fields.push({ id: codexUid(), name: seed.name, kind: seed.kind, entries: [] });
-    db.seenSeeds.push(seed.name);
-    changed = true;
-  });
-  if (changed) codexSaveDB(db);
-  return changed;
-}
-
 function codexFindField(db, fieldId) {
   return db.fields.find((f) => f.id === fieldId) || null;
-}
-
-function codexSeedForField(field) {
-  if (typeof CODEX_SEED_FIELDS === 'undefined') return null;
-  return CODEX_SEED_FIELDS.find((s) => s.name === field.name) || null;
 }
 
 function codexAllEntries(db) {

@@ -1,7 +1,7 @@
 /* ============================================================================
    THE CODEX - field page.
    Add via Wikidata lookup (candidate picker), manual add, bulk import,
-   seed preload, distribution with baseline toggle, sortable entry table.
+   distribution with baseline toggle, sortable entry table.
    ========================================================================== */
 
 let db = codexLoadDB();
@@ -163,26 +163,6 @@ document.getElementById('importRunBtn').addEventListener('click', () => {
   ).finally(() => { document.getElementById('importRunBtn').disabled = false; });
 });
 
-/* ------------------------------------------------------- seed preload --- */
-
-const seed = codexSeedForField(field);
-if (seed) {
-  const remaining = seed.list.filter((n) => !fieldHasName(n));
-  if (remaining.length) {
-    document.getElementById('seedBox').hidden = false;
-    document.getElementById('seedSub').textContent =
-      `${remaining.length} of ${seed.list.length} names from the built-in ${seed.name} list are not in this field yet. Dates resolve live from Wikidata.`;
-    document.getElementById('seedBtn').addEventListener('click', () => {
-      document.getElementById('seedBtn').disabled = true;
-      runBatch(remaining.map((n) => ({ name: n, date: null })),
-        document.getElementById('seedStatus'),
-        document.getElementById('seedTrack'),
-        document.getElementById('seedFill'),
-        document.getElementById('seedFails')
-      ).finally(() => { document.getElementById('seedBox').hidden = true; });
-    });
-  }
-}
 
 /* ------------------------------------------------------- distribution --- */
 

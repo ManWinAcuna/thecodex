@@ -11,7 +11,13 @@
    Model: codexData/{CODEX_CLOUD_DOC_ID}/chunks/{meta, chunk_i}, so a
    database bigger than Firestore's ~1MiB doc limit still syncs (same
    chunking idea as the cockpit's own sync, simplified - no auth layer).
-   Newer updatedAt wins in both directions. Pushes are debounced 2s.
+   Newer updatedAt wins in both directions, EXCEPT: a pull that would
+   shrink the local entry count never auto-applies (see
+   codexTotalEntryCount/the guard in codexCloudPullIfNewerChecked) - a
+   timestamp alone can't tell "this is genuinely newer" apart from "this
+   is thinner/stale data that happens to have a fresher clock", and a
+   real incident (a test push overwriting real local data) proved that
+   distinction matters. Pushes are debounced 2s.
    ========================================================================== */
 
 const CODEX_CLOUD_DOC_ID = 'owner-codex-v1';
@@ -64,10 +70,23 @@ function codexCloudCollection() {
   return firebase.firestore().collection('codexData').doc(CODEX_CLOUD_DOC_ID).collection('chunks');
 }
 
+function codexTotalEntryCount(db) {
+  const fieldsTotal = (db.fields || []).reduce((n, f) => n + (f.entries ? f.entries.length : 0), 0);
+  const hourTotal = (db.hourFields || []).reduce((n, f) => n + (f.entries ? f.entries.length : 0), 0);
+  return fieldsTotal + hourTotal;
+}
+
 /* { ok, replaced }: ok is false only on a genuine failure (most likely the
    Firestore rule from FIREBASE_RULES.md not published yet, since the
    default rules deny everything) - "no cloud doc exists yet" is a normal,
-   successful outcome (first-ever sync), not a failure. */
+   successful outcome (first-ever sync), not a failure.
+
+   Newer timestamp alone is NOT enough to auto-replace: if the cloud copy
+   has fewer total entries than what's sitting in local right now, that's
+   a real signal something is off (stale write, wrong device, a bad test
+   push) even if its clock is "newer" - ask before ever shrinking local
+   data, and if declined, push local back up to correct the cloud copy
+   instead of leaving it thinner than reality. */
 async function codexCloudPullIfNewerChecked() {
   try {
     const local = codexLoadDB();
@@ -83,6 +102,20 @@ async function codexCloudPullIfNewerChecked() {
     }
     const remote = JSON.parse(json);
     if (!remote || !Array.isArray(remote.fields)) return { ok: true, replaced: false };
+
+    const localCount = codexTotalEntryCount(local);
+    const remoteCount = codexTotalEntryCount(remote);
+    if (remoteCount < localCount) {
+      const proceed = await codexConfirm(
+        `The cloud copy has fewer entries (${remoteCount}) than what's here right now (${localCount}). Replace local data with the smaller cloud copy anyway?`,
+        { title: 'Cloud data looks thinner', okLabel: 'Replace anyway', danger: true }
+      );
+      if (!proceed) {
+        codexCloudQueuePush();
+        return { ok: true, replaced: false };
+      }
+    }
+
     localStorage.setItem(CODEX_DB_KEY, JSON.stringify(remote));
     return { ok: true, replaced: true };
   } catch (e) {

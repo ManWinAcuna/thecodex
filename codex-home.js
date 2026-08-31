@@ -5,7 +5,6 @@
    ========================================================================== */
 
 let db = codexLoadDB();
-codexApplySeedFields(db);
 
 let labMode = codexRecall('fields_labMode', 'true');
 

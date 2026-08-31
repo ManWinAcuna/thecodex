@@ -1,15 +1,22 @@
 /* ============================================================================
    THE CODEX - cloud sync (dormant until firebase-config.js is filled in).
-   Owner-gated: only CODEX_OWNER_EMAIL's Google account may read or write.
-   Model: users/{uid}/codex/meta { chunks, updatedAt } + chunk_i docs, so a
-   database bigger than Firestore's ~1MB doc limit still syncs (big-store
-   pattern from the cockpit, simplified).
+   No login: the owner's explicit call, prioritizing zero-friction access on
+   any device over per-account access control. There is no Firebase Auth at
+   all here - every page that loads reads and writes the SAME fixed
+   Firestore path automatically. That path is a distinct top-level
+   collection ("codexData") in the numerology-app's shared Firebase project,
+   opened by its own narrow security rule (see codex/FIREBASE_RULES.md) -
+   it cannot reach or affect that app's own `users/{uid}` data.
+
+   Model: codexData/{CODEX_CLOUD_DOC_ID}/chunks/{meta, chunk_i}, so a
+   database bigger than Firestore's ~1MiB doc limit still syncs (same
+   chunking idea as the cockpit's own sync, simplified - no auth layer).
    Newer updatedAt wins in both directions. Pushes are debounced 2s.
    ========================================================================== */
 
+const CODEX_CLOUD_DOC_ID = 'owner-codex-v1';
 const CODEX_CLOUD_CHUNK_CHARS = 500000;
 let codexCloudReady = false;
-let codexCloudUser = null;
 let codexCloudPushTimer = null;
 
 function codexCloudEnabled() {
@@ -32,9 +39,9 @@ async function codexCloudInit(onRemoteReplace) {
     if (slot) slot.innerHTML = '<span class="count-chip">Local only</span>';
     return;
   }
+  if (slot) slot.innerHTML = '<span class="count-chip">Cloud: connecting...</span>';
   try {
     await codexCloudLoadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
-    await codexCloudLoadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js');
     await codexCloudLoadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js');
     firebase.initializeApp(window.CODEX_FIREBASE_CONFIG);
     codexCloudReady = true;
@@ -43,72 +50,54 @@ async function codexCloudInit(onRemoteReplace) {
     return;
   }
 
-  firebase.auth().onAuthStateChanged(async (user) => {
-    if (user && user.email !== CODEX_OWNER_EMAIL) {
-      codexToast('This database is owner-locked.', { kind: 'danger', duration: 5000 });
-      firebase.auth().signOut();
-      return;
-    }
-    codexCloudUser = user;
-    codexCloudRenderSlot();
-    if (user) {
-      const replaced = await codexCloudPullIfNewer();
-      if (replaced && onRemoteReplace) onRemoteReplace();
-      else codexCloudQueuePush();
-    }
-  });
-  codexCloudRenderSlot();
-}
-
-function codexCloudRenderSlot() {
-  const slot = document.getElementById('cloudSlot');
-  if (!slot) return;
-  if (!codexCloudReady) { slot.innerHTML = ''; return; }
-  if (codexCloudUser) {
-    slot.innerHTML = '<button class="btn-link" id="cloudSignOut">Signed in &middot; Sign out</button>';
-    document.getElementById('cloudSignOut').addEventListener('click', () => firebase.auth().signOut());
-  } else {
-    slot.innerHTML = '<button class="btn-link" id="cloudSignIn">Sign in for cloud sync</button>';
-    document.getElementById('cloudSignIn').addEventListener('click', () => {
-      firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
-    });
+  const pullResult = await codexCloudPullIfNewerChecked();
+  if (pullResult.ok) {
+    if (slot) slot.innerHTML = '<span class="count-chip">Cloud: synced</span>';
+  } else if (slot) {
+    slot.innerHTML = '<span class="count-chip" title="Add the Firestore rule from FIREBASE_RULES.md">Cloud: rule not applied yet</span>';
   }
+  if (pullResult.replaced && onRemoteReplace) onRemoteReplace();
+  else if (pullResult.ok) codexCloudQueuePush();
 }
 
 function codexCloudCollection() {
-  return firebase.firestore().collection('users').doc(codexCloudUser.uid).collection('codex');
+  return firebase.firestore().collection('codexData').doc(CODEX_CLOUD_DOC_ID).collection('chunks');
 }
 
-async function codexCloudPullIfNewer() {
+/* { ok, replaced }: ok is false only on a genuine failure (most likely the
+   Firestore rule from FIREBASE_RULES.md not published yet, since the
+   default rules deny everything) - "no cloud doc exists yet" is a normal,
+   successful outcome (first-ever sync), not a failure. */
+async function codexCloudPullIfNewerChecked() {
   try {
     const local = codexLoadDB();
     const metaSnap = await codexCloudCollection().doc('meta').get();
-    if (!metaSnap.exists) return false;
+    if (!metaSnap.exists) return { ok: true, replaced: false };
     const meta = metaSnap.data();
-    if (!meta.updatedAt || meta.updatedAt <= (local.updatedAt || 0)) return false;
+    if (!meta.updatedAt || meta.updatedAt <= (local.updatedAt || 0)) return { ok: true, replaced: false };
     let json = '';
     for (let i = 0; i < meta.chunks; i++) {
       const chunkSnap = await codexCloudCollection().doc(`chunk_${i}`).get();
-      if (!chunkSnap.exists) return false;
+      if (!chunkSnap.exists) return { ok: true, replaced: false };
       json += chunkSnap.data().json;
     }
     const remote = JSON.parse(json);
-    if (!remote || !Array.isArray(remote.fields)) return false;
+    if (!remote || !Array.isArray(remote.fields)) return { ok: true, replaced: false };
     localStorage.setItem(CODEX_DB_KEY, JSON.stringify(remote));
-    return true;
+    return { ok: true, replaced: true };
   } catch (e) {
-    return false;
+    return { ok: false, replaced: false };
   }
 }
 
 function codexCloudQueuePush() {
-  if (!codexCloudReady || !codexCloudUser) return;
+  if (!codexCloudReady) return;
   clearTimeout(codexCloudPushTimer);
   codexCloudPushTimer = setTimeout(codexCloudPushNow, 2000);
 }
 
 async function codexCloudPushNow() {
-  if (!codexCloudReady || !codexCloudUser) return;
+  if (!codexCloudReady) return;
   try {
     const db = codexLoadDB();
     const json = JSON.stringify(db);

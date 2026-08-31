@@ -1,18 +1,21 @@
 /* ============================================================================
-   THE CODEX - Firebase config slot.
-   The site runs fully on localStorage until this is filled in. To go
-   cloud-enabled: create a Firebase project (Firestore + Google sign-in),
-   then replace the null below with the web app config object from
-   Project settings -> Your apps -> SDK setup and configuration, e.g.:
+   THE CODEX - Firebase config.
+   Reuses the numerology-app's existing Firebase project (advanced-numerology
+   -d3f0f) rather than a separate one - same infrastructure, a completely
+   separate data path (top-level "codexData" collection, see codex-cloud.js),
+   so nothing here can collide with or affect that app's own synced data.
 
-   window.CODEX_FIREBASE_CONFIG = {
-     apiKey: '...',
-     authDomain: 'the-codex-xxxxx.firebaseapp.com',
-     projectId: 'the-codex-xxxxx',
-     storageBucket: 'the-codex-xxxxx.appspot.com',
-     messagingSenderId: '...',
-     appId: '...',
-   };
+   No login: this app has no per-account access control by design (the
+   owner's explicit call - see codex-cloud.js's own header comment). Any
+   device that loads the site syncs automatically to one fixed spot in this
+   project the moment the page opens.
    ========================================================================== */
 
-window.CODEX_FIREBASE_CONFIG = null;
+window.CODEX_FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyCv3i-Eetjr0zZ3ZNd-hPRRH_bTrjbs-yE',
+  authDomain: 'advanced-numerology-d3f0f.firebaseapp.com',
+  projectId: 'advanced-numerology-d3f0f',
+  storageBucket: 'advanced-numerology-d3f0f.firebasestorage.app',
+  messagingSenderId: '521136780282',
+  appId: '1:521136780282:web:121419fb086a7da70cea43',
+};

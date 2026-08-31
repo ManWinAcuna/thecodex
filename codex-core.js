@@ -13,7 +13,6 @@
    ========================================================================== */
 
 const CODEX_DB_KEY = 'codex_db_v1';
-const CODEX_OWNER_EMAIL = 'horseyear2026manuel@gmail.com';
 
 const CODEX_FIELD_KINDS = {
   people: { label: 'People', dateLabel: 'Born' },

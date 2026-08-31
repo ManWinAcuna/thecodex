@@ -16,13 +16,35 @@ separate from that app's `users/{uid}` data - this rule only opens
 1. Firebase console -> project **advanced-numerology-d3f0f** -> **Firestore
    Database** -> **Rules** tab.
 2. Add this block **inside** the existing `match /databases/{database}/documents { ... }`,
-   alongside the `users/{userId}` and `publicConfig` blocks already there -
-   don't replace them, just add this one too:
+   alongside the `users/{userId}` block already there - as a SIBLING of it,
+   both nested one level in, both closed BEFORE that outer block's own
+   closing brace. Getting this nesting wrong is the single most common
+   mistake here (pasting it after the last `}` puts it outside the whole
+   `service` block and the editor rejects it with "Unexpected 'match'").
 
 ```
     match /codexData/{document=**} {
       allow read, write: if true;
     }
+```
+
+   If in doubt, replace the WHOLE editor contents with this (adjust if you
+   also have a `publicConfig` block from Code13 - keep that one too):
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == userId
+        && request.auth.token.email == 'horseyear2026manuel@gmail.com';
+    }
+    match /codexData/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
 ```
 
 3. **Publish**.

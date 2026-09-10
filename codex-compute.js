@@ -28,16 +28,16 @@ function codexEventTypeInfo(typeId) {
 }
 
 /* Does an arbitrary date's own UD (codexDigitPoolUD) match any of this
-   person's own First Imprints (Imprint UD per themed day, or Day Energy
-   Imprint)? Returns the matching theme labels, e.g. an event landing on
-   UD 5 for someone whose 8-Day imprint is also 5 gets flagged - a real
-   hit against the owner's own resonance theory, not something you'd have
-   to notice by eye. */
+   person's own Day Energy Imprints or Lucky Number Imprints? Returns the
+   matching theme labels, e.g. an event landing on UD 5 for someone whose
+   Day Energy 8 imprint is also 5 gets flagged - a real hit against the
+   owner's own resonance theory, not something you'd have to notice by eye.
+   First UD imprints (codes.imprints) are deliberately excluded here
+   (2026-09-10): since that family now reports a DAY (1-31), not a UD,
+   comparing it against an event's UD would be a coincidental, meaningless
+   match, not a real one. */
 function codexFindResonantThemes(codes, ud) {
   const hits = [];
-  CODEX_IMPRINT_THEMES.forEach((n) => {
-    if (codes.imprints && codes.imprints[n] != null && String(codes.imprints[n]) === String(ud)) hits.push(`${n}-Day imprint`);
-  });
   CODEX_IMPRINT_THEMES.forEach((n) => {
     if (codes.dayEnergyImprints && codes.dayEnergyImprints[n] != null && String(codes.dayEnergyImprints[n]) === String(ud)) hits.push(`Day Energy ${n} imprint`);
   });
@@ -66,6 +66,31 @@ function codexDigitPoolUD(date) {
     i++;
   }
   return runCustomReduction(pool.reduce((a, b) => a + b, 0));
+}
+
+/* First UD imprint: walk forward day-by-day from birth (inclusive) for the
+   first date whose OWN Universal Day (codexDigitPoolUD) equals the target -
+   the day-of-month behind THAT date is the imprint. (2026-09-10 fix: the
+   previous version of this searched by literal day-of-month and reported
+   that date's UD - backwards. Confirmed against the owner's own worked
+   example: born 1/3/2003, the first UD1 date is 1/4/2003, so "First UD 1"
+   reports day 4; the first UD11 date is 1/5/2003, so "First UD 11" reports
+   day 5.) UD is driven by the full month+day+year pool, not just the day -
+   a master-number target like 22 needs the raw pre-reduction sum to land
+   on that exact value, which can legitimately take years from birth (e.g.
+   verified live: one real entry's first UD22 date was 910 days out). A
+   20-year window comfortably covers that; the search itself stays cheap
+   (one string concat + digit sum per day) and every result is cached by
+   codexComputeCodes, so this only ever runs once per unique birth date. */
+function codexFirstDateForUD(birthDate, targetUD) {
+  const searchDate = new Date(birthDate.getTime());
+  for (let i = 0; i <= 7305; i++) {
+    if (i > 0) searchDate.setDate(searchDate.getDate() + 1);
+    if (String(codexDigitPoolUD(searchDate)) === String(targetUD)) {
+      return { date: new Date(searchDate.getTime()), day: searchDate.getDate() };
+    }
+  }
+  return null;
 }
 
 /* Day Energy imprint: NOT in the sacrosanct engine, built here per the
@@ -115,11 +140,8 @@ function codexComputeCodes(dateStr) {
   const rawDay = getRawDay(d);
   const imprints = {};
   CODEX_IMPRINT_THEMES.forEach((n) => {
-    // 8 is a compound theme (8th/17th/26th, never the literal 28th) - its
-    // own dedicated engine function, not the plain exact-day-of-month walk
-    // every other theme uses.
-    const found = n === 8 ? getFirstEightDayImprint(d) : getFirstDayOfMonthImprint(d, n);
-    if (found) imprints[n] = found.lp;
+    const found = codexFirstDateForUD(d, n);
+    if (found) imprints[n] = found.day;
   });
   const dayEnergyImprints = {};
   CODEX_IMPRINT_THEMES.forEach((n) => {
@@ -199,20 +221,20 @@ const CODEX_DIMENSIONS = [
   { id: 'vietYear', label: 'Year Animal', get: (c) => c.vietYear, sortKey: codexAnimalSortKey, numeral: false },
   { id: 'vietMonth', label: 'Month Animal', get: (c) => c.vietMonth, sortKey: codexAnimalSortKey, numeral: false },
   { id: 'vietDay', label: 'Day Animal', get: (c) => c.vietDay, sortKey: codexAnimalSortKey, numeral: false },
-  // The value every "Imprint UD" dimension reports (below) describes the
-  // FOUND DATE's own numerological character (a Universal-Day-style
-  // reading), never the person's own Life Path - "Imprint LP" was a naming
-  // inaccuracy fixed 2026-08-27, not a computation change; the underlying
-  // number is untouched (verified against the owner's own 1/3/2003 worked
-  // example: every themed day matched exactly).
+  // Reports the found date's own Universal-Day-style reading (via
+  // codexLuckyNumberImprint), never the person's own Life Path.
   {
     id: 'luckyImprint', label: 'Lucky Number Imprint',
     get: (c) => (c.luckyImprint ? String(c.luckyImprint.ud) : null),
     sortKey: codexNumKeySort, numeral: true,
   },
+  // "First UD N" reports a DAY (1-31), not a UD - it's the day-of-month
+  // behind the first date after birth whose own Universal Day equals N
+  // (codexFirstDateForUD). Fixed 2026-09-10: this used to search by
+  // literal day-of-month and report that date's UD, backwards from spec.
 ].concat(CODEX_IMPRINT_THEMES.map((n) => ({
   id: `imprint${n}`,
-  label: `Imprint UD (${n}-Day)`,
+  label: `First UD ${n}`,
   get: (c) => (c.imprints[n] != null ? String(c.imprints[n]) : null),
   sortKey: codexNumKeySort,
   numeral: true,

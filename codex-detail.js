@@ -37,7 +37,7 @@ function codexEntryProfileSectionsHtml(codes) {
 
   const imprintTiles = CODEX_IMPRINT_THEMES
     .filter((n) => codes.imprints[n] != null)
-    .map((n) => codexFactTileHtml(`${n}-Day`, codes.imprints[n]))
+    .map((n) => codexFactTileHtml(`First UD ${n}`, codes.imprints[n]))
     .join('');
 
   const dayEnergyTiles = CODEX_IMPRINT_THEMES
@@ -55,7 +55,7 @@ function codexEntryProfileSectionsHtml(codes) {
     </button>
     <div class="collapsible-body" id="${bodyId}" hidden>
       <div class="detail-grid">${moreCoreTiles}</div>
-      <div class="detail-section-label">Imprint UD per themed day</div>
+      <div class="detail-section-label">First UD (day it landed on)</div>
       <div class="detail-grid">${imprintTiles || '<div class="status-line">None found.</div>'}</div>
       <div class="detail-section-label">Day Energy imprint per theme</div>
       <div class="detail-grid">${dayEnergyTiles || '<div class="status-line">None found.</div>'}</div>

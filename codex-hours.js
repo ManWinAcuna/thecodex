@@ -317,8 +317,11 @@ function codexHourDistributionHtml(items, dimId, mode, showField) {
   const top = rows[0];
   const verdict = codexVerdictCardHtml(codexEscape(top.key), `${dim.label} leader &middot; ${top.hits.length} of ${total} (${(top.pct * 100).toFixed(0)}%)`);
 
+  const hourWheelRows = () => rows.map((r) => ({ key: r.key, count: r.hits.length, pct: r.pct }));
   const wheel = CODEX_ANIMAL_DIM_IDS.includes(dimId)
-    ? codexAnimalWheelHtml(rows.map((r) => ({ key: r.key, count: r.hits.length, pct: r.pct })))
+    ? codexAnimalWheelHtml(hourWheelRows())
+    : CODEX_NUMBER_WHEEL_DIM_IDS.includes(dimId)
+    ? codexNumberWheelHtml(hourWheelRows())
     : '';
   return codexTotalLineHtml(total, 'people carry this dimension in this scope') + verdict + wheel + `<div class="bar-rows">${html}</div>`;
 }
@@ -328,7 +331,7 @@ function codexHourDistributionHtml(items, dimId, mode, showField) {
 function codexWireHourBars(container, items) {
   codexWireTooltips(container);
   const wheel = container.querySelector('.animal-wheel-wrap');
-  if (wheel) codexHint('wheel', wheel, 'Each wedge is one of the 12 animals - hover any slice or legend row for the exact count.');
+  if (wheel) codexHint('wheel', wheel, 'Each wedge is one value - hover any slice or legend row for the exact count.');
   container.querySelectorAll('.bar-row').forEach((row) => {
     row.addEventListener('click', (ev) => {
       if (ev.target.closest('.entry-chip')) return;

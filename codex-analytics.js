@@ -131,8 +131,11 @@ function codexLeaderboardHtml(scoped, dimId, mode, restItems, opts) {
   const note = mode === 'true' && !codexLoadBaseline()
     ? '<div class="status-line err">True baseline not built yet. Build it from the toolbar to unlock the normally markers.</div>'
     : '';
+  const wheelRows = () => withExpected.map((r) => ({ key: r.key, count: r.items.length, pct: r.pct }));
   const wheel = CODEX_ANIMAL_DIM_IDS.includes(dimId)
-    ? codexAnimalWheelHtml(withExpected.map((r) => ({ key: r.key, count: r.items.length, pct: r.pct })))
+    ? codexAnimalWheelHtml(wheelRows())
+    : CODEX_NUMBER_WHEEL_DIM_IDS.includes(dimId)
+    ? codexNumberWheelHtml(wheelRows())
     : '';
   return note + codexTotalLineHtml(total, 'entries with a usable date in this scope') + verdict + wheel + `<div class="bar-rows">${html}</div>`;
 }
@@ -141,7 +144,7 @@ function codexLeaderboardHtml(scoped, dimId, mode, restItems, opts) {
 function codexWireLeaderboard(container, resolveItem) {
   codexWireTooltips(container);
   const wheel = container.querySelector('.animal-wheel-wrap');
-  if (wheel) codexHint('wheel', wheel, 'Each wedge is one of the 12 animals - hover any slice or legend row for the exact count.');
+  if (wheel) codexHint('wheel', wheel, 'Each wedge is one value - hover any slice or legend row for the exact count.');
   container.querySelectorAll('.bar-row').forEach((row) => {
     row.addEventListener('click', (ev) => {
       if (ev.target.closest('.entry-chip')) return;

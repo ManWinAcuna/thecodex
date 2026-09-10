@@ -133,6 +133,73 @@ function codexAnimalWheelHtml(rows) {
   </div>`;
 }
 
+/* -------------------------------------------------------- number wheel --- */
+/* Dimensions whose values are one of the core numerology numbers (1-9, 11,
+   13, 22, 28, 33) get the same radial wheel as the animal dimensions,
+   colored via each number's own established CODEX_HUE_TABLE hue instead of
+   a single gold intensity ramp. "First UD N" imprints are deliberately
+   excluded - they report a raw day-of-month (1-31), not a themed number,
+   so a 31-slice wheel would be cluttered and none of those slices would
+   carry a meaningful color; they stay as the plain bar list. */
+const CODEX_NUMBER_WHEEL_DIM_IDS = ['lp', 'dayNum', 'combo', 'luckyImprint', 'deathPH', 'deathPHMil', 'deathRoot', 'birthRoot']
+  .concat(CODEX_IMPRINT_THEMES.map((n) => `dayEnergyImprint${n}`));
+
+const CODEX_NUMBER_WHEEL_ORDER = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 22, 28, 33];
+
+/* Compound display values ("22/4", "33/6", "13/4") bucket under their base
+   master number so the wheel stays at this fixed, readable slot count -
+   the bar list underneath still keeps the finer plain/compound split. */
+function codexWheelBaseNumber(key) {
+  const base = String(key).split('/')[0];
+  const n = Number(base);
+  return CODEX_NUMBER_WHEEL_ORDER.includes(n) ? n : null;
+}
+
+/* rows: [{key, count, pct}] - same shape codexAnimalWheelHtml takes. Every
+   core number gets a fixed slot (0%/empty if this group never hit it), so
+   the wheel's shape stays comparable across different fields/dimensions. */
+function codexNumberWheelHtml(rows) {
+  const byNum = {};
+  rows.forEach((r) => {
+    const n = codexWheelBaseNumber(r.key);
+    if (n == null) return;
+    if (!byNum[n]) byNum[n] = { count: 0, pct: 0 };
+    byNum[n].count += r.count;
+    byNum[n].pct += r.pct;
+  });
+
+  const cx = 120; const cy = 120; const R = 100; const r = 48;
+  const maxPct = Math.max(0.001, ...CODEX_NUMBER_WHEEL_ORDER.map((n) => (byNum[n] ? byNum[n].pct : 0)));
+  const step = 360 / CODEX_NUMBER_WHEEL_ORDER.length;
+
+  const segs = CODEX_NUMBER_WHEEL_ORDER.map((n, i) => {
+    const row = byNum[n];
+    const pct = row ? row.pct : 0;
+    const count = row ? row.count : 0;
+    const startA = i * step - 90; const endA = startA + step; const midA = startA + step / 2;
+    const [x1o, y1o] = codexPolar(cx, cy, R, startA);
+    const [x2o, y2o] = codexPolar(cx, cy, R, endA);
+    const [x2i, y2i] = codexPolar(cx, cy, r, endA);
+    const [x1i, y1i] = codexPolar(cx, cy, r, startA);
+    const intensity = maxPct > 0 ? pct / maxPct : 0;
+    const hue = CODEX_HUE_TABLE[n] || 'var(--gold)';
+    const fill = pct > 0 ? `color-mix(in srgb, ${hue} ${Math.round(20 + intensity * 80)}%, var(--panel-2))` : 'var(--panel-2)';
+    const [lx, ly] = codexPolar(cx, cy, (R + r) / 2, midA);
+    return { n, path: `M ${x1o.toFixed(1)},${y1o.toFixed(1)} A ${R},${R} 0 0 1 ${x2o.toFixed(1)},${y2o.toFixed(1)} L ${x2i.toFixed(1)},${y2i.toFixed(1)} A ${r},${r} 0 0 0 ${x1i.toFixed(1)},${y1i.toFixed(1)} Z`, fill, hue, lx, ly, pct, count };
+  });
+
+  const wedgesSvg = segs.map((s) => `<path d="${s.path}" fill="${s.fill}" stroke="var(--border)" stroke-width="1" data-tip="${s.n}: ${s.count} (${(s.pct * 100).toFixed(1)}%)"></path>`).join('');
+  const labelsSvg = segs.map((s) => `<text x="${s.lx.toFixed(1)}" y="${s.ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-family="var(--display)" font-weight="700" font-size="15" fill="${s.pct > 0 ? s.hue : 'var(--muted)'}" style="pointer-events:none;">${s.n}</text>`).join('');
+  const legend = segs.map((s) =>
+    `<div class="awl-row" data-tip="${s.n}: ${s.count} (${(s.pct * 100).toFixed(1)}%)"><span class="awl-swatch" style="background:${s.hue}"></span><span class="awl-name">${s.n}</span><span class="awl-pct">${s.count} &middot; ${(s.pct * 100).toFixed(1)}%</span></div>`
+  ).join('');
+
+  return `<div class="animal-wheel-wrap">
+    <svg width="240" height="240" viewBox="0 0 240 240">${wedgesSvg}${labelsSvg}</svg>
+    <div class="animal-wheel-legend">${legend}</div>
+  </div>`;
+}
+
 /* ------------------------------------------------------------- sidebar --- */
 /* One icon language, app-wide: plain emoji, chosen so no two nav items
    read as the same concept (Hour Studies is a clock face, Time Codex is

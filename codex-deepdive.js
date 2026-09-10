@@ -87,6 +87,40 @@ function renderHeader() {
 }
 
 /* -------------------------------------------------------------- events --- */
+/* Click any event card to open a notes + pasted-photo editor for it.
+   ddOpenEventIds tracks which cards are expanded so that editor stays open
+   across the re-renders a photo add/remove or undo triggers. Notes save
+   debounced (no re-render, so typing never loses focus); photos save and
+   re-render immediately since a paste is a deliberate, infrequent action. */
+const ddOpenEventIds = new Set();
+const ddNotesSaveTimers = new Map();
+const DD_IMAGE_MAX_DIM = 1000;
+
+function ddCompressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > DD_IMAGE_MAX_DIM || height > DD_IMAGE_MAX_DIM) {
+          const scale = DD_IMAGE_MAX_DIM / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = () => reject(new Error('bad image'));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error('read failed'));
+    reader.readAsDataURL(file);
+  });
+}
 
 function ddEventCardHtml(ev) {
   const eventDateObj = codexParseDate(ev.date);
@@ -111,15 +145,30 @@ function ddEventCardHtml(ev) {
     ? `<div class="resonance-hit">&#10024; Resonates with: ${resonant.map(codexEscape).join(', ')}</div>`
     : '';
 
-  return `<div class="box event-card" style="--dim-accent:${accent}" data-event="${ev.id}">
+  const isOpen = ddOpenEventIds.has(ev.id);
+  const images = Array.isArray(ev.images) ? ev.images : [];
+  const imagesHtml = images.map((src, i) => `
+    <div class="dd-image-thumb">
+      <img src="${src}" alt="">
+      <button class="dd-image-del" data-img-del="${ev.id}:${i}" title="Remove photo">&times;</button>
+    </div>`).join('');
+
+  return `<div class="box event-card" style="--dim-accent:${accent}" data-event-card="${ev.id}">
     <div class="event-card-head">
       <span class="dim-chip" style="--dim-accent:${accent}">${codexEscape(typeInfo.label)}</span>
       <span class="event-date">${codexFormatDate(ev.date)}</span>
       <button class="row-del" data-del-event="${ev.id}" title="Delete">&times;</button>
     </div>
     <div class="event-name">${codexEscape(ev.name)}</div>
-    ${resonanceHtml}
-    <div class="detail-grid">${tiles}</div>
+    <div class="dd-event-body" data-editor-for="${ev.id}" ${isOpen ? '' : 'hidden'}>
+      ${resonanceHtml}
+      <div class="detail-grid">${tiles}</div>
+      <div class="dd-event-editor">
+        <div class="detail-section-label">Notes &amp; photos</div>
+        <textarea class="dd-notes-input" data-notes-for="${ev.id}" placeholder="Notes... paste a screenshot here too (Ctrl+V)">${codexEscape(ev.notes || '')}</textarea>
+        <div class="dd-image-row" data-images-for="${ev.id}">${imagesHtml}</div>
+      </div>
+    </div>
   </div>`;
 }
 
@@ -137,18 +186,74 @@ function renderEvents() {
   out.innerHTML = sorted.map(ddEventCardHtml).join('');
 
   out.querySelectorAll('[data-del-event]').forEach((btn) => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
       const id = btn.dataset.delEvent;
-      const ev = ddEntry.events.find((e) => e.id === id);
-      if (!ev) return;
-      const idx = ddEntry.events.indexOf(ev);
+      const found = ddEntry.events.find((e) => e.id === id);
+      if (!found) return;
+      const idx = ddEntry.events.indexOf(found);
       ddEntry.events.splice(idx, 1);
+      ddOpenEventIds.delete(id);
       codexSaveDB(db);
       renderEvents();
-      codexToast(`Deleted event: ${ev.name}`, {
+      codexToast(`Deleted event: ${found.name}`, {
         kind: 'danger', duration: 6000, actionLabel: 'Undo',
-        onAction: () => { ddEntry.events.splice(idx, 0, ev); codexSaveDB(db); renderEvents(); },
+        onAction: () => { ddEntry.events.splice(idx, 0, found); codexSaveDB(db); renderEvents(); },
       });
+    });
+  });
+
+  out.querySelectorAll('[data-event-card]').forEach((card) => {
+    card.addEventListener('click', (ev) => {
+      if (ev.target.closest('.dd-event-body, [data-del-event]')) return;
+      const id = card.dataset.eventCard;
+      if (ddOpenEventIds.has(id)) ddOpenEventIds.delete(id); else ddOpenEventIds.add(id);
+      renderEvents();
+    });
+  });
+
+  out.querySelectorAll('[data-img-del]').forEach((btn) => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const [eventId, idxStr] = btn.dataset.imgDel.split(':');
+      const found = ddEntry.events.find((e) => e.id === eventId);
+      if (!found || !Array.isArray(found.images)) return;
+      found.images.splice(Number(idxStr), 1);
+      codexSaveDB(db);
+      renderEvents();
+    });
+  });
+
+  out.querySelectorAll('[data-notes-for]').forEach((textarea) => {
+    textarea.addEventListener('click', (ev) => ev.stopPropagation());
+    textarea.addEventListener('input', () => {
+      const id = textarea.dataset.notesFor;
+      clearTimeout(ddNotesSaveTimers.get(id));
+      ddNotesSaveTimers.set(id, setTimeout(() => {
+        const found = ddEntry.events.find((e) => e.id === id);
+        if (found) { found.notes = textarea.value; codexSaveDB(db); }
+      }, 600));
+    });
+    textarea.addEventListener('paste', async (ev) => {
+      const items = ev.clipboardData && ev.clipboardData.items;
+      if (!items) return;
+      const imageFiles = Array.from(items).filter((it) => it.type.startsWith('image/')).map((it) => it.getAsFile()).filter(Boolean);
+      if (!imageFiles.length) return;
+      ev.preventDefault();
+      const id = textarea.dataset.notesFor;
+      const found = ddEntry.events.find((e) => e.id === id);
+      if (!found) return;
+      if (!Array.isArray(found.images)) found.images = [];
+      for (const file of imageFiles) {
+        try {
+          const dataUrl = await ddCompressImage(file);
+          found.images.push(dataUrl);
+        } catch (e) { /* unreadable clipboard image, skip */ }
+      }
+      found.notes = textarea.value;
+      codexSaveDB(db);
+      codexToast('Photo added.', { kind: 'success' });
+      renderEvents();
     });
   });
 }

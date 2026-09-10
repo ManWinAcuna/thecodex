@@ -135,7 +135,7 @@ function codexLeaderboardHtml(scoped, dimId, mode, restItems, opts) {
   const wheel = CODEX_ANIMAL_DIM_IDS.includes(dimId)
     ? codexAnimalWheelHtml(wheelRows())
     : CODEX_NUMBER_WHEEL_DIM_IDS.includes(dimId)
-    ? codexNumberWheelHtml(wheelRows())
+    ? codexNumberWheelHtml(wheelRows(), dimId)
     : '';
   return note + codexTotalLineHtml(total, 'entries with a usable date in this scope') + verdict + wheel + `<div class="bar-rows">${html}</div>`;
 }

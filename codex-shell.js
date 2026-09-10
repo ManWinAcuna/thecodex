@@ -134,34 +134,63 @@ function codexAnimalWheelHtml(rows) {
 }
 
 /* -------------------------------------------------------- number wheel --- */
-/* Dimensions whose values are one of the core numerology numbers (1-9, 11,
-   13, 22, 28, 33) get the same radial wheel as the animal dimensions,
-   colored via each number's own established CODEX_HUE_TABLE hue instead of
-   a single gold intensity ramp. "First UD N" imprints are deliberately
-   excluded - they report a raw day-of-month (1-31), not a themed number,
-   so a 31-slice wheel would be cluttered and none of those slices would
-   carry a meaningful color; they stay as the plain bar list. */
-const CODEX_NUMBER_WHEEL_DIM_IDS = ['lp', 'dayNum', 'combo', 'luckyImprint', 'deathPH', 'deathPHMil', 'deathRoot', 'birthRoot']
-  .concat(CODEX_IMPRINT_THEMES.map((n) => `dayEnergyImprint${n}`));
+/* Dimensions whose values are one of the core numerology numbers get the
+   same radial wheel as the animal dimensions, colored via each number's own
+   established CODEX_HUE_TABLE hue instead of a single gold intensity ramp.
+   "First UD N" imprints are deliberately excluded - they report a raw
+   day-of-month (1-31), not a themed number, so a 31-slice wheel would be
+   cluttered and none of those slices would carry a meaningful color; they
+   stay as the plain bar list.
 
-const CODEX_NUMBER_WHEEL_ORDER = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 22, 28, 33];
+   The slot set is PER DIMENSION, not one universal list - the reduction
+   rules that produce each dimension's values genuinely differ on which
+   numbers are even reachable (verified directly against numerology.js,
+   2026-09-10, after a wheel showing an always-zero "2" slot for Life Path
+   looked like a counting bug but was actually the real engine's own rule:
+   finalReduce() forces a would-be 2 to master 11, so Life Path can never
+   be plain 2 - same for runCustomReduction/personalHourReduce. Showing a
+   slot that's structurally impossible for that dimension is what actually
+   read as broken, not the counts themselves):
+     lp            - finalReduce(): 2 always becomes 11, never produces 28
+     dayNum        - reduceNumber(): reachable 2, reaches 28, never 13/33
+     combo         - max raw total 24, only ever reduces to 1-9/11/22
+     luckyImprint / dayEnergyImprint(n) - runCustomReduction(): never 2/13
+     birthRoot / deathRoot / deathPH / deathPHMil - personalHourReduce():
+       never 2, freezes at 13/28 too (its own separate freeze table) */
+const CODEX_NUMBER_WHEEL_UD_SLOTS = [1, 3, 4, 5, 6, 7, 8, 9, 11, 22, 28, 33];
+const CODEX_NUMBER_WHEEL_HOUR_SLOTS = [1, 3, 4, 5, 6, 7, 8, 9, 11, 13, 22, 28, 33];
+const CODEX_NUMBER_WHEEL_SLOTS = {
+  lp: [1, 3, 4, 5, 6, 7, 8, 9, 11, 13, 22, 33],
+  dayNum: [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 22, 28],
+  combo: [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 22],
+  luckyImprint: CODEX_NUMBER_WHEEL_UD_SLOTS,
+  birthRoot: CODEX_NUMBER_WHEEL_HOUR_SLOTS,
+  deathRoot: CODEX_NUMBER_WHEEL_HOUR_SLOTS,
+  deathPH: CODEX_NUMBER_WHEEL_HOUR_SLOTS,
+  deathPHMil: CODEX_NUMBER_WHEEL_HOUR_SLOTS,
+};
+CODEX_IMPRINT_THEMES.forEach((n) => { CODEX_NUMBER_WHEEL_SLOTS[`dayEnergyImprint${n}`] = CODEX_NUMBER_WHEEL_UD_SLOTS; });
+const CODEX_NUMBER_WHEEL_DIM_IDS = Object.keys(CODEX_NUMBER_WHEEL_SLOTS);
 
 /* Compound display values ("22/4", "33/6", "13/4") bucket under their base
-   master number so the wheel stays at this fixed, readable slot count -
-   the bar list underneath still keeps the finer plain/compound split. */
-function codexWheelBaseNumber(key) {
+   master number so the wheel stays at a fixed, readable slot count - the
+   bar list underneath still keeps the finer plain/compound split. */
+function codexWheelBaseNumber(key, order) {
   const base = String(key).split('/')[0];
   const n = Number(base);
-  return CODEX_NUMBER_WHEEL_ORDER.includes(n) ? n : null;
+  return order.includes(n) ? n : null;
 }
 
 /* rows: [{key, count, pct}] - same shape codexAnimalWheelHtml takes. Every
-   core number gets a fixed slot (0%/empty if this group never hit it), so
-   the wheel's shape stays comparable across different fields/dimensions. */
-function codexNumberWheelHtml(rows) {
+   slot this dimension can actually produce gets a fixed position (0%/empty
+   if this group never hit it), so the wheel's shape stays comparable
+   across different fields, but never shows a slot that's impossible for
+   this specific dimension. */
+function codexNumberWheelHtml(rows, dimId) {
+  const order = CODEX_NUMBER_WHEEL_SLOTS[dimId] || CODEX_NUMBER_WHEEL_UD_SLOTS;
   const byNum = {};
   rows.forEach((r) => {
-    const n = codexWheelBaseNumber(r.key);
+    const n = codexWheelBaseNumber(r.key, order);
     if (n == null) return;
     if (!byNum[n]) byNum[n] = { count: 0, pct: 0 };
     byNum[n].count += r.count;
@@ -169,10 +198,10 @@ function codexNumberWheelHtml(rows) {
   });
 
   const cx = 120; const cy = 120; const R = 100; const r = 48;
-  const maxPct = Math.max(0.001, ...CODEX_NUMBER_WHEEL_ORDER.map((n) => (byNum[n] ? byNum[n].pct : 0)));
-  const step = 360 / CODEX_NUMBER_WHEEL_ORDER.length;
+  const maxPct = Math.max(0.001, ...order.map((n) => (byNum[n] ? byNum[n].pct : 0)));
+  const step = 360 / order.length;
 
-  const segs = CODEX_NUMBER_WHEEL_ORDER.map((n, i) => {
+  const segs = order.map((n, i) => {
     const row = byNum[n];
     const pct = row ? row.pct : 0;
     const count = row ? row.count : 0;
@@ -189,7 +218,12 @@ function codexNumberWheelHtml(rows) {
   });
 
   const wedgesSvg = segs.map((s) => `<path d="${s.path}" fill="${s.fill}" stroke="var(--border)" stroke-width="1" data-tip="${s.n}: ${s.count} (${(s.pct * 100).toFixed(1)}%)"></path>`).join('');
-  const labelsSvg = segs.map((s) => `<text x="${s.lx.toFixed(1)}" y="${s.ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-family="var(--display)" font-weight="700" font-size="15" fill="${s.pct > 0 ? s.hue : 'var(--muted)'}" style="pointer-events:none;">${s.n}</text>`).join('');
+  // Label fill is always the app's neutral text color, not the wedge's own
+  // hue - a light hue (e.g. Life Path 1's near-white) at high intensity
+  // tints its own wedge nearly that same color, making same-color text
+  // unreadable. The dark stroke halo (paint-order draws it under the fill)
+  // keeps the number legible against both pale and dark wedge fills.
+  const labelsSvg = segs.map((s) => `<text x="${s.lx.toFixed(1)}" y="${s.ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-family="var(--display)" font-weight="700" font-size="15" fill="var(--text)" stroke="#000" stroke-width="3" stroke-opacity="0.55" paint-order="stroke fill" style="pointer-events:none;">${s.n}</text>`).join('');
   const legend = segs.map((s) =>
     `<div class="awl-row" data-tip="${s.n}: ${s.count} (${(s.pct * 100).toFixed(1)}%)"><span class="awl-swatch" style="background:${s.hue}"></span><span class="awl-name">${s.n}</span><span class="awl-pct">${s.count} &middot; ${(s.pct * 100).toFixed(1)}%</span></div>`
   ).join('');

@@ -321,7 +321,7 @@ function codexHourDistributionHtml(items, dimId, mode, showField) {
   const wheel = CODEX_ANIMAL_DIM_IDS.includes(dimId)
     ? codexAnimalWheelHtml(hourWheelRows())
     : CODEX_NUMBER_WHEEL_DIM_IDS.includes(dimId)
-    ? codexNumberWheelHtml(hourWheelRows())
+    ? codexNumberWheelHtml(hourWheelRows(), dimId)
     : '';
   return codexTotalLineHtml(total, 'people carry this dimension in this scope') + verdict + wheel + `<div class="bar-rows">${html}</div>`;
 }

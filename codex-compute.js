@@ -10,6 +10,66 @@
    pure-33 imprint rarely exists and needs the person-level path. */
 const CODEX_IMPRINT_THEMES = IMPRINT_TRACKED_NUMBERS.slice();
 
+/* Shared by both derived imprint searches below: pool a date's own
+   month+day+year (11/22/33-pairing method) and reduce via
+   runCustomReduction - the exact digit-pool block getFirstDayOfMonthImprint/
+   getFirstEightDayImprint (imprint-alignment.js) already duplicate
+   per-function, kept here as one Codex-side helper instead of a third
+   copy-paste. Never touches the sacrosanct engine files - only consumes
+   the public runCustomReduction. */
+function codexDigitPoolUD(date) {
+  const fullSequence = String(date.getMonth() + 1) + String(date.getDate()) + String(date.getFullYear());
+  const pool = [];
+  let i = 0;
+  while (i < fullSequence.length) {
+    if (i + 1 < fullSequence.length) {
+      const two = fullSequence.substring(i, i + 2);
+      if (two === '11' || two === '22' || two === '33') { pool.push(parseInt(two, 10)); i += 2; continue; }
+    }
+    pool.push(parseInt(fullSequence.charAt(i), 10));
+    i++;
+  }
+  return runCustomReduction(pool.reduce((a, b) => a + b, 0));
+}
+
+/* Day Energy imprint: NOT in the sacrosanct engine, built here per the
+   user's own spec (2026-08-27) - same "walk forward up to 31 days" shape
+   as getFirstEightDayImprint, but the per-day test is Day Energy
+   (reduceNumber of the day-of-month itself, the simpler one-pass formula -
+   distinct from Universal Day's full month+day+year pool) instead of a
+   fixed target of 8. Reports the found date's own UD (codexDigitPoolUD),
+   same output convention as every other imprint here. */
+function codexFirstDayEnergyImprint(birthDate, target) {
+  const searchDate = new Date(birthDate.getTime());
+  for (let i = 0; i <= 31; i++) {
+    if (i > 0) searchDate.setDate(searchDate.getDate() + 1);
+    if (reduceNumber(searchDate.getDate()) !== target) continue;
+    return { date: new Date(searchDate.getTime()), ud: codexDigitPoolUD(searchDate) };
+  }
+  return null; // unreachable: every reduceNumber(1..31) target recurs within 31 days
+}
+
+/* Lucky Number imprint: the engine's own getPersonLuckyImprintValues
+   (imprint-alignment.js) only ever handles a lucky number 1-31 (treats it
+   as a day-of-month, via getFirstDayOfMonthImprint) and silently drops
+   anything bigger - getLuckyNumber's month-digit+year-digit concatenation
+   routinely lands well past 31. This fills that gap Codex-side: >31 reads
+   as a day-of-year instead (JS's Date constructor normalizes day overflow
+   on its own, e.g. new Date(year,0,72) rolls cleanly into March), using
+   the first year on/after birth where that day-of-year itself falls
+   on/after the actual birth date. */
+function codexLuckyNumberImprint(birthDate, luckyValue) {
+  if (luckyValue == null) return null;
+  if (luckyValue >= 1 && luckyValue <= 31) {
+    const found = getFirstDayOfMonthImprint(birthDate, luckyValue);
+    return found ? { date: found.date, ud: found.lp, kind: 'day' } : null;
+  }
+  let year = birthDate.getFullYear();
+  let candidate = new Date(year, 0, luckyValue);
+  if (candidate < birthDate) candidate = new Date(year + 1, 0, luckyValue);
+  return { date: candidate, ud: codexDigitPoolUD(candidate), kind: 'year' };
+}
+
 const codexCodesCache = new Map();
 
 function codexComputeCodes(dateStr) {
@@ -19,9 +79,20 @@ function codexComputeCodes(dateStr) {
   const rawDay = getRawDay(d);
   const imprints = {};
   CODEX_IMPRINT_THEMES.forEach((n) => {
-    const found = getFirstDayOfMonthImprint(d, n);
+    // 8 is a compound theme (8th/17th/26th, never the literal 28th) - its
+    // own dedicated engine function, not the plain exact-day-of-month walk
+    // every other theme uses.
+    const found = n === 8 ? getFirstEightDayImprint(d) : getFirstDayOfMonthImprint(d, n);
     if (found) imprints[n] = found.lp;
   });
+  const dayEnergyImprints = {};
+  CODEX_IMPRINT_THEMES.forEach((n) => {
+    const found = codexFirstDayEnergyImprint(d, n);
+    if (found) dayEnergyImprints[n] = found.ud;
+  });
+  const lucky = getImprintLuckyNumbers(d);
+  const luckyImprint = codexLuckyNumberImprint(d, lucky.primary);
+  const altLuckyImprint = lucky.alt != null ? codexLuckyNumberImprint(d, lucky.alt) : null;
   // Same day-condition the real engine uses to decide "22" vs "22/4" and
   // "33" vs "33/6" (lifePathBreakdown, numerology.js - not exposed on its
   // return value, so re-derived here from the date rather than touching
@@ -43,6 +114,11 @@ function codexComputeCodes(dateStr) {
     vietMonth: getChineseMonth(d),
     vietDay: getChineseDaySign(d),
     imprints,
+    dayEnergyImprints,
+    luckyValue: lucky.primary,
+    luckyImprint,
+    altLuckyValue: lucky.alt,
+    altLuckyImprint,
   };
   codexCodesCache.set(dateStr, codes);
   return codes;
@@ -87,10 +163,27 @@ const CODEX_DIMENSIONS = [
   { id: 'vietYear', label: 'Year Animal', get: (c) => c.vietYear, sortKey: codexAnimalSortKey, numeral: false },
   { id: 'vietMonth', label: 'Month Animal', get: (c) => c.vietMonth, sortKey: codexAnimalSortKey, numeral: false },
   { id: 'vietDay', label: 'Day Animal', get: (c) => c.vietDay, sortKey: codexAnimalSortKey, numeral: false },
+  // The value every "Imprint UD" dimension reports (below) describes the
+  // FOUND DATE's own numerological character (a Universal-Day-style
+  // reading), never the person's own Life Path - "Imprint LP" was a naming
+  // inaccuracy fixed 2026-08-27, not a computation change; the underlying
+  // number is untouched (verified against the owner's own 1/3/2003 worked
+  // example: every themed day matched exactly).
+  {
+    id: 'luckyImprint', label: 'Lucky Number Imprint',
+    get: (c) => (c.luckyImprint ? String(c.luckyImprint.ud) : null),
+    sortKey: codexNumKeySort, numeral: true,
+  },
 ].concat(CODEX_IMPRINT_THEMES.map((n) => ({
   id: `imprint${n}`,
-  label: `Imprint LP (${n}-Day)`,
+  label: `Imprint UD (${n}-Day)`,
   get: (c) => (c.imprints[n] != null ? String(c.imprints[n]) : null),
+  sortKey: codexNumKeySort,
+  numeral: true,
+}))).concat(CODEX_IMPRINT_THEMES.map((n) => ({
+  id: `dayEnergyImprint${n}`,
+  label: `Day Energy Imprint (${n})`,
+  get: (c) => (c.dayEnergyImprints[n] != null ? String(c.dayEnergyImprints[n]) : null),
   sortKey: codexNumKeySort,
   numeral: true,
 })));

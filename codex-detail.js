@@ -32,13 +32,27 @@ function codexOpenDetail(entry, field) {
     .map((n) => codexFactTileHtml(`${n}-Day`, codes.imprints[n]))
     .join('');
 
+  const dayEnergyTiles = CODEX_IMPRINT_THEMES
+    .filter((n) => codes.dayEnergyImprints[n] != null)
+    .map((n) => codexFactTileHtml(`DE ${n}`, codes.dayEnergyImprints[n]))
+    .join('');
+
+  const luckyTiles = [
+    codes.luckyImprint ? codexFactTileHtml(`Lucky (${codes.luckyValue})`, codes.luckyImprint.ud) : '',
+    codes.altLuckyImprint ? codexFactTileHtml(`Alt Lucky (${codes.altLuckyValue})`, codes.altLuckyImprint.ud) : '',
+  ].filter(Boolean).join('');
+
   body.innerHTML = `
     <img id="detailImg" class="detail-img" alt="" hidden>
     <h2 class="detail-name">${codexEscape(entry.name)}</h2>
     <div class="detail-sub">${codexEscape(field.name)} &middot; ${kindInfo.dateLabel}: ${codexFormatDate(entry.date)}${entry.dateKind ? ` (${codexEscape(entry.dateKind)})` : ''}</div>
     <div class="detail-grid">${coreTiles}</div>
-    <div class="detail-section-label">Imprint LP per themed day</div>
+    <div class="detail-section-label">Imprint UD per themed day</div>
     <div class="detail-grid">${imprintTiles || '<div class="status-line">None found.</div>'}</div>
+    <div class="detail-section-label">Day Energy imprint per theme</div>
+    <div class="detail-grid">${dayEnergyTiles || '<div class="status-line">None found.</div>'}</div>
+    <div class="detail-section-label">Lucky Number imprint</div>
+    <div class="detail-grid">${luckyTiles || '<div class="status-line">None found.</div>'}</div>
     ${entry.wikiTitle ? `<div class="detail-section-label"><a class="back-link" href="https://en.wikipedia.org/wiki/${encodeURIComponent(entry.wikiTitle)}" target="_blank" rel="noopener">Wikipedia: ${codexEscape(entry.wikiTitle)}</a></div>` : ''}
   `;
   overlay.classList.add('open');

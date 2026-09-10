@@ -11,10 +11,11 @@
 
 const CODEX_BASELINE_START_YEAR = 1900;
 const CODEX_BASELINE_END_YEAR = 2009;
-// v5: "13/4" itself split into "13" (plain, honorary-master-number
-// default) vs "13/4" (the day-condition exception) - a baseline cached
-// before this split would still lump every pure-13 person under "13/4".
-const CODEX_BASELINE_KEY = `codex_baseline_v5_${CODEX_BASELINE_START_YEAR}_${CODEX_BASELINE_END_YEAR}`;
+// v6: relabeled Imprint LP -> Imprint UD (no value change), fixed the
+// missing 8-Day (8/17/26) special case, and added Day Energy Imprint +
+// Lucky Number Imprint dimensions - a baseline cached before this would
+// be missing those dims entirely and mislabel the imprint ones.
+const CODEX_BASELINE_KEY = `codex_baseline_v6_${CODEX_BASELINE_START_YEAR}_${CODEX_BASELINE_END_YEAR}`;
 
 let codexBaseline = null; // { totalDays, dims: { dimId: { key: count } } }
 

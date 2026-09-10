@@ -9,21 +9,31 @@ function codexFactTileHtml(label, value, plain) {
   return `<div class="fact-tile"><div class="fact-label">${codexEscape(label)}</div><div class="fact-value${plain ? ' plain' : ''}">${codexEscape(value)}</div></div>`;
 }
 
-/* Shared by the quick popup AND the full Deep Dive profile page - the core
-   8-tile grid plus the three imprint-family grids, all derived from one
-   codexComputeCodes() result. Kept as one function so the two views can
-   never quietly drift apart on what a "profile" actually shows. */
+/* Shared by the quick popup AND the full Deep Dive profile page - the
+   always-visible headline tiles plus a collapsible body holding the rest
+   (remaining core tiles + the two imprint-family grids), all derived from
+   one codexComputeCodes() result. Kept as one function so the two views
+   can never quietly drift apart on what a "profile" actually shows.
+   Wired via event delegation (below) rather than per-instance IDs passed
+   to codexWireCollapsible, since this can render multiple times on one
+   page load (popup reopened) or appear fresh on Deep Dive - a delegated
+   listener needs no re-wiring call from either caller. */
 function codexEntryProfileSectionsHtml(codes) {
-  const coreTiles = [
+  const headlineTiles = [
     codexFactTileHtml('Life Path', codes.lp),
-    codexFactTileHtml('LP Compound', codes.lpCompound),
     codexFactTileHtml('Day Born', codes.dayBorn),
+    codexFactTileHtml('Year Animal', codes.vietYear, true),
+    codes.luckyImprint ? codexFactTileHtml(`Lucky (${codes.luckyValue})`, codes.luckyImprint.ud) : '',
+  ].filter(Boolean).join('');
+
+  const moreCoreTiles = [
+    codexFactTileHtml('LP Compound', codes.lpCompound),
     codexFactTileHtml('Day Number', codes.dayNum),
     codexFactTileHtml('Combo', codes.combo),
-    codexFactTileHtml('Year Animal', codes.vietYear, true),
     codexFactTileHtml('Month Animal', codes.vietMonth, true),
     codexFactTileHtml('Day Animal', codes.vietDay, true),
-  ].join('');
+    codes.altLuckyImprint ? codexFactTileHtml(`Alt Lucky (${codes.altLuckyValue})`, codes.altLuckyImprint.ud) : '',
+  ].filter(Boolean).join('');
 
   const imprintTiles = CODEX_IMPRINT_THEMES
     .filter((n) => codes.imprints[n] != null)
@@ -35,21 +45,35 @@ function codexEntryProfileSectionsHtml(codes) {
     .map((n) => codexFactTileHtml(`DE ${n}`, codes.dayEnergyImprints[n]))
     .join('');
 
-  const luckyTiles = [
-    codes.luckyImprint ? codexFactTileHtml(`Lucky (${codes.luckyValue})`, codes.luckyImprint.ud) : '',
-    codes.altLuckyImprint ? codexFactTileHtml(`Alt Lucky (${codes.altLuckyValue})`, codes.altLuckyImprint.ud) : '',
-  ].filter(Boolean).join('');
+  const bodyId = `profBody-${codexUid()}`;
 
   return `
-    <div class="detail-grid">${coreTiles}</div>
-    <div class="detail-section-label">Imprint UD per themed day</div>
-    <div class="detail-grid">${imprintTiles || '<div class="status-line">None found.</div>'}</div>
-    <div class="detail-section-label">Day Energy imprint per theme</div>
-    <div class="detail-grid">${dayEnergyTiles || '<div class="status-line">None found.</div>'}</div>
-    <div class="detail-section-label">Lucky Number imprint</div>
-    <div class="detail-grid">${luckyTiles || '<div class="status-line">None found.</div>'}</div>
+    <div class="detail-grid">${headlineTiles}</div>
+    <button class="collapsible-toggle" data-profile-toggle="${bodyId}" type="button" style="margin-top: 14px;">
+      <span class="box-label">More codes</span>
+      <span class="collapse-chevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body" id="${bodyId}" hidden>
+      <div class="detail-grid">${moreCoreTiles}</div>
+      <div class="detail-section-label">Imprint UD per themed day</div>
+      <div class="detail-grid">${imprintTiles || '<div class="status-line">None found.</div>'}</div>
+      <div class="detail-section-label">Day Energy imprint per theme</div>
+      <div class="detail-grid">${dayEnergyTiles || '<div class="status-line">None found.</div>'}</div>
+    </div>
   `;
 }
+
+/* Delegated so it covers every codexEntryProfileSectionsHtml() instance,
+   present or future, without per-render wiring calls. */
+document.addEventListener('click', (ev) => {
+  const toggle = ev.target.closest('[data-profile-toggle]');
+  if (!toggle) return;
+  const body = document.getElementById(toggle.dataset.profileToggle);
+  if (!body) return;
+  body.hidden = !body.hidden;
+  const chevron = toggle.querySelector('.collapse-chevron');
+  if (chevron) chevron.classList.toggle('open', !body.hidden);
+});
 
 function codexOpenDetail(entry, field) {
   const overlay = document.getElementById('detailOverlay');

@@ -322,6 +322,26 @@ html.shell-ready .page {
 .empty-state-sub { font-size: 12.5px; max-width: 360px; margin: 0 auto 14px; line-height: 1.5; }
 .empty-state-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 
+/* --------------------------------------------------------- event cards --- */
+.event-card { margin-bottom: 14px; }
+.event-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.event-date { color: var(--muted); font-size: 12.5px; }
+.event-name { font-family: var(--display); font-weight: 600; font-size: 16px; letter-spacing: .02em; margin-bottom: 10px; }
+.event-card-head .row-del {
+  margin-left: auto; background: none; border: none; color: var(--muted);
+  font-size: 18px; line-height: 1; cursor: pointer; padding: 2px 6px; border-radius: 6px;
+}
+.event-card-head .row-del:hover { color: var(--bad); background: var(--gold-ghost); }
+.resonance-hit {
+  background: color-mix(in srgb, var(--gold) 12%, transparent);
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  margin-bottom: 10px;
+}
+
 /* ------------------------------------------------------------ reveal-in --- */
 @keyframes cxReveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .cx-reveal { animation: cxReveal .28s ease-out both; }

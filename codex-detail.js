@@ -9,13 +9,11 @@ function codexFactTileHtml(label, value, plain) {
   return `<div class="fact-tile"><div class="fact-label">${codexEscape(label)}</div><div class="fact-value${plain ? ' plain' : ''}">${codexEscape(value)}</div></div>`;
 }
 
-function codexOpenDetail(entry, field) {
-  const overlay = document.getElementById('detailOverlay');
-  const body = document.getElementById('detailBody');
-  if (!overlay || !body) return;
-  const codes = codexComputeCodes(entry.date);
-  const kindInfo = CODEX_FIELD_KINDS[field.kind] || CODEX_FIELD_KINDS.custom;
-
+/* Shared by the quick popup AND the full Deep Dive profile page - the core
+   8-tile grid plus the three imprint-family grids, all derived from one
+   codexComputeCodes() result. Kept as one function so the two views can
+   never quietly drift apart on what a "profile" actually shows. */
+function codexEntryProfileSectionsHtml(codes) {
   const coreTiles = [
     codexFactTileHtml('Life Path', codes.lp),
     codexFactTileHtml('LP Compound', codes.lpCompound),
@@ -42,10 +40,7 @@ function codexOpenDetail(entry, field) {
     codes.altLuckyImprint ? codexFactTileHtml(`Alt Lucky (${codes.altLuckyValue})`, codes.altLuckyImprint.ud) : '',
   ].filter(Boolean).join('');
 
-  body.innerHTML = `
-    <img id="detailImg" class="detail-img" alt="" hidden>
-    <h2 class="detail-name">${codexEscape(entry.name)}</h2>
-    <div class="detail-sub">${codexEscape(field.name)} &middot; ${kindInfo.dateLabel}: ${codexFormatDate(entry.date)}${entry.dateKind ? ` (${codexEscape(entry.dateKind)})` : ''}</div>
+  return `
     <div class="detail-grid">${coreTiles}</div>
     <div class="detail-section-label">Imprint UD per themed day</div>
     <div class="detail-grid">${imprintTiles || '<div class="status-line">None found.</div>'}</div>
@@ -53,7 +48,25 @@ function codexOpenDetail(entry, field) {
     <div class="detail-grid">${dayEnergyTiles || '<div class="status-line">None found.</div>'}</div>
     <div class="detail-section-label">Lucky Number imprint</div>
     <div class="detail-grid">${luckyTiles || '<div class="status-line">None found.</div>'}</div>
-    ${entry.wikiTitle ? `<div class="detail-section-label"><a class="back-link" href="https://en.wikipedia.org/wiki/${encodeURIComponent(entry.wikiTitle)}" target="_blank" rel="noopener">Wikipedia: ${codexEscape(entry.wikiTitle)}</a></div>` : ''}
+  `;
+}
+
+function codexOpenDetail(entry, field) {
+  const overlay = document.getElementById('detailOverlay');
+  const body = document.getElementById('detailBody');
+  if (!overlay || !body) return;
+  const codes = codexComputeCodes(entry.date);
+  const kindInfo = CODEX_FIELD_KINDS[field.kind] || CODEX_FIELD_KINDS.custom;
+
+  body.innerHTML = `
+    <img id="detailImg" class="detail-img" alt="" hidden>
+    <h2 class="detail-name">${codexEscape(entry.name)}</h2>
+    <div class="detail-sub">${codexEscape(field.name)} &middot; ${kindInfo.dateLabel}: ${codexFormatDate(entry.date)}${entry.dateKind ? ` (${codexEscape(entry.dateKind)})` : ''}</div>
+    ${codexEntryProfileSectionsHtml(codes)}
+    <div class="detail-section-label">
+      <a class="btn-link" href="deep-dive.html?wing=fields&fieldId=${field.id}&entryId=${entry.id}">&#128213; Deep Dive - add events</a>
+      ${entry.wikiTitle ? `<a class="back-link" href="https://en.wikipedia.org/wiki/${encodeURIComponent(entry.wikiTitle)}" target="_blank" rel="noopener">Wikipedia: ${codexEscape(entry.wikiTitle)}</a>` : ''}
+    </div>
   `;
   overlay.classList.add('open');
 

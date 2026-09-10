@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<title>The Codex</title>
+<title>Deep Dive - The Codex</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23000'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='38' font-weight='bold' fill='%23f5c542' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="codex.css?v=7">
 <link rel="stylesheet" href="codex-shell.css?v=4">
@@ -13,36 +13,14 @@
 <div class="page">
 
   <div class="codex-header">
-    <h1 class="codex-title">Dashboard</h1>
-    <span class="codex-tagline">What's decoded so far</span>
-  </div>
-  <div class="codex-toolbar">
+    <h1 class="codex-title">Deep Dive</h1>
     <span id="cloudSlot"></span>
   </div>
-
-  <div id="dashHero"></div>
-
-  <div id="dashStats" class="dash-stats-grid"></div>
-
-  <div class="box-label" style="margin: 22px 0 10px;">Jump In</div>
-  <div class="card-grid">
-    <a class="data-card" href="fields.html">
-      <div class="data-card-name">&#128450;&#65039; Fields</div>
-      <div class="data-card-meta"><span id="dashFieldsMeta">-</span><span>&rsaquo;</span></div>
-    </a>
-    <a class="data-card" href="hours.html">
-      <div class="data-card-name">&#128336; Hour Studies</div>
-      <div class="data-card-meta"><span id="dashHoursMeta">-</span><span>&rsaquo;</span></div>
-    </a>
-    <a class="data-card" href="time-codex.html">
-      <div class="data-card-name">&#8987; Time Codex</div>
-      <div class="data-card-meta"><span>The calendar's own proportions</span><span>&rsaquo;</span></div>
-    </a>
-    <a class="data-card" href="compare.html">
-      <div class="data-card-name">&#9878;&#65039; Compare</div>
-      <div class="data-card-meta"><span>Put fields or eras side by side</span><span>&rsaquo;</span></div>
-    </a>
+  <div class="codex-toolbar">
+    <a class="back-link" id="ddBackLink" href="fields.html">&larr; Back</a>
   </div>
+
+  <div id="ddContent"></div>
 
 </div>
 
@@ -63,12 +41,13 @@
 <script src="firebase-config.js?v=1"></script>
 <script src="codex-core.js?v=5"></script>
 <script src="codex-compute.js?v=6"></script>
+<script src="codex-wiki.js?v=2"></script>
 <script src="codex-baseline.js?v=6"></script>
 <script src="codex-analytics.js?v=5"></script>
 <script src="codex-detail.js?v=3"></script>
 <script src="codex-hours.js?v=10"></script>
 <script src="codex-cloud.js?v=4"></script>
 <script src="codex-shell.js?v=2"></script>
-<script src="codex-dashboard.js?v=3"></script>
+<script src="codex-deepdive.js?v=1"></script>
 </body>
 </html>

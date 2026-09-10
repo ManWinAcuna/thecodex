@@ -10,6 +10,42 @@
    pure-33 imprint rarely exists and needs the person-level path. */
 const CODEX_IMPRINT_THEMES = IMPRINT_TRACKED_NUMBERS.slice();
 
+/* ------------------------------------------------------- Deep Dive events */
+/* Colors reuse the same energy hue table codex-shell.js's dimension
+   accents pull from - not new colors, just applied to a new concept. */
+const CODEX_EVENT_TYPES = [
+  { id: 'career', label: 'Career', hue: 8 },
+  { id: 'achievement', label: 'Achievement', hue: 22 },
+  { id: 'personal', label: 'Personal', hue: 4 },
+  { id: 'relationship', label: 'Relationship', hue: 33 },
+  { id: 'health', label: 'Health', hue: 6 },
+  { id: 'tragedy', label: 'Tragedy', hue: 7 },
+  { id: 'financial', label: 'Financial', hue: 28 },
+  { id: 'other', label: 'Other', hue: 1 },
+];
+function codexEventTypeInfo(typeId) {
+  return CODEX_EVENT_TYPES.find((t) => t.id === typeId) || CODEX_EVENT_TYPES[CODEX_EVENT_TYPES.length - 1];
+}
+
+/* Does an arbitrary date's own UD (codexDigitPoolUD) match any of this
+   person's own First Imprints (Imprint UD per themed day, or Day Energy
+   Imprint)? Returns the matching theme labels, e.g. an event landing on
+   UD 5 for someone whose 8-Day imprint is also 5 gets flagged - a real
+   hit against the owner's own resonance theory, not something you'd have
+   to notice by eye. */
+function codexFindResonantThemes(codes, ud) {
+  const hits = [];
+  CODEX_IMPRINT_THEMES.forEach((n) => {
+    if (codes.imprints && codes.imprints[n] != null && String(codes.imprints[n]) === String(ud)) hits.push(`${n}-Day imprint`);
+  });
+  CODEX_IMPRINT_THEMES.forEach((n) => {
+    if (codes.dayEnergyImprints && codes.dayEnergyImprints[n] != null && String(codes.dayEnergyImprints[n]) === String(ud)) hits.push(`Day Energy ${n} imprint`);
+  });
+  if (codes.luckyImprint && String(codes.luckyImprint.ud) === String(ud)) hits.push(`Lucky Number (${codes.luckyValue}) imprint`);
+  if (codes.altLuckyImprint && String(codes.altLuckyImprint.ud) === String(ud)) hits.push(`Alt Lucky Number (${codes.altLuckyValue}) imprint`);
+  return hits;
+}
+
 /* Shared by both derived imprint searches below: pool a date's own
    month+day+year (11/22/33-pairing method) and reduce via
    runCustomReduction - the exact digit-pool block getFirstDayOfMonthImprint/

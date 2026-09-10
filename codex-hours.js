@@ -382,6 +382,9 @@ function codexOpenHourDetail(entry, field) {
     ${d ? `<div class="detail-section-label">Death</div><div class="detail-grid">${deathTiles}</div>` : ''}
     <div class="detail-section-label">Personal Hours table</div>
     <div class="table-wrap"><table class="codex-table"><thead><tr><th>Hour</th><th>Sign</th><th>Value</th>${codes.isPM ? '<th>Military</th>' : ''}<th></th></tr></thead><tbody>${tableRows}</tbody></table></div>
+    <div class="detail-section-label">
+      <a class="btn-link" href="deep-dive.html?wing=hours&fieldId=${field.id}&entryId=${entry.id}">&#128213; Deep Dive - add events</a>
+    </div>
   `;
   overlay.classList.add('open');
 }
